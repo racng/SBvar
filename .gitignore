@@ -1,0 +1,3 @@
+# Ignore installation files
+sbvar.egg-info
+sbvar/__pycache__/*
