@@ -1,5 +1,5 @@
 import numpy as np
-import tellurium as te
+import pandas as pd
 from roadrunner import RoadRunner
 import warnings
 
@@ -37,8 +37,9 @@ class Experiment():
     ----------
     conditions: list of tuples
         List of levels 
-    simulations: list of NamedArray
-        List of simulation output
+    simulations: numpy.ndarray
+        Three-dimensional stacked arrays of simulation outputs across all conditions.
+        (Number of timepoints x Number of Selections x Number of conditions)
     """
     def __init__(self, rr, start=0, end=5, points=51, 
         selections=None, steps=None):
@@ -140,6 +141,11 @@ class OneWayExperiment(Experiment):
                 raise ValueError("Levels must be numerical.")
         return
 
+    def get_conditions_df(self):
+        """Generate dataframe of conditions"""
+        df = pd.DataFrame({self.param:self.conditions})
+        return df
+        
     def iter_conditions(self, func, **kwargs):
         """Wrapper function for iterating through conditions."""
         outputs = []
@@ -159,24 +165,9 @@ class OneWayExperiment(Experiment):
                         selections=self.selections)
         return output
 
-    # def simulate(self):
-    #     """Run and store simulations for conditions"""
-    #     self.simulations = []
-    #     for value in self.conditions:
-    #         # Reset model
-    #         self.rr.reset()
-    #         # Change parameter value
-    #         self.rr[self.param] = value
-    #         output = self.rr.simulate(
-    #             start=self.start, end=self.end, 
-    #             points=self.points, steps=self.steps, 
-    #             selections=self.selections)
-    #         self.simulations.append(output)
-    #     return
-
     def simulate(self):
         """Run and store simulations for each condition."""
-        self.simulations = self.iter_conditions(self._simulate)
+        self.simulations = np.dstack(self.iter_conditions(self._simulate))
         return
 
     def _steady_state(self):
