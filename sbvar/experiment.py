@@ -1,3 +1,4 @@
+from matplotlib.pyplot import viridis
 import numpy as np
 from numpy.core.fromnumeric import var
 import pandas as pd
@@ -196,7 +197,7 @@ class Experiment(object):
             warnings.warn("Running simulations.")
             self.simulate()
         step = self.get_closest_timepoint(time)
-        vector = self.get_step_values(self, variable, step)
+        vector = self.get_step_values(variable, step)
         return vector
 
     def get_values(self, variable, steady_state=True, step=None, time=None):
@@ -220,9 +221,9 @@ class Experiment(object):
         """
         if steady_state:
             return self.get_steady_state(variable)
-        elif step:
+        elif step is not None:
             return self.get_step_values(variable, step)
-        elif time:
+        elif time is not None:
             return self.get_timepoint_values(variable, time)
 
 class OneWayExperiment(Experiment):
@@ -334,12 +335,15 @@ class OneWayExperiment(Experiment):
         Z = vector_to_mesh(vector, dim1, dim2)
         return Z
     
-    def plot_timecourse_mesh(self, variable, kind='contourf', projection='2d', **kwargs):
+    def plot_timecourse_mesh(self, variable, kind='contourf', projection='2d', 
+        cmap='viridis', **kwargs):
         T, Y = self.conditions_to_meshes()
         Z = self.get_timecourse_mesh(variable)
-        fig, ax = plot_mesh(T, Y, Z, kind=kind, projection=projection, **kwargs)
+        fig, ax, cax = plot_mesh(T, Y, Z, kind=kind, projection=projection, 
+            cmap=cmap, **kwargs)
         ax.set_xlabel('Time')
         ax.set_ylabel(self.param)
+        cax.set_title(variable)
         if projection=='3d':
             ax.set_zlabel(variable)
         else:
@@ -488,9 +492,9 @@ class TwoWayExperiment(Experiment):
             return self.vector_to_mesh(vector)
         return vector
     
-    def get_time_values(self, variable, step, mesh=True):
+    def get_time_values(self, variable, time, mesh=True):
         """Get values of variable from timepoint closest to time."""
-        vector = super().get_time_values(variable, step)
+        vector = super().get_time_values(variable, time)
         if mesh:
             return self.vector_to_mesh(vector)
         return vector
@@ -516,14 +520,14 @@ class TwoWayExperiment(Experiment):
         """
         if steady_state:
             return self.get_steady_state(variable)
-        elif step:
-            self.get_step_values(variable, step)
-        elif time:
-            self.get_timepoint_values(variable, time)
-        return
+        elif step is not None:
+            return self.get_step_values(variable, step)
+        elif time is not None:
+            return self.get_time_values(variable, time)
+        
     
     def plot_mesh(self, variable, steady_state=True, step=None, time=None, 
-        kind='contourf', projection='2d', **kwargs):
+        kind='contourf', projection='2d', cmap='viridis', **kwargs):
         """Plot simulation/calculation results as function of the two
         varying parameters.
         Parameters
@@ -545,14 +549,16 @@ class TwoWayExperiment(Experiment):
         X, Y = self.conditions_to_meshes()
         Z = self.get_mesh(variable, steady_state=steady_state, step=step, 
             time=time)
-        fig, ax = plot_mesh(X, Y, Z, kind=kind, **kwargs)
+        fig, ax, cax = plot_mesh(X, Y, Z, kind=kind, projection=projection, 
+            cmap=cmap, **kwargs)
         ax.set_xlabel(self.param_list[0])
         ax.set_ylabel(self.param_list[1])
+        cax.set_title(variable)
         if projection=='3d':
             ax.set_zlabel(variable)
         else:
             ax.set_title(variable)
-        return fig, ax
+        return fig, ax, cax
 
         
 

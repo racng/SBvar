@@ -31,12 +31,19 @@ def plot_mesh(X, Y, Z, kind='contourf', projection='2d',
     if kind=='surface':
         if projection=='2d':
             raise ValueError("Plotting surface requires 3d projection.")
-        ax.plot_surface(X, Y, Z, **kwargs)
+        cs = ax.plot_surface(X, Y, Z, **kwargs)
     
     if kind=='contourf':
-        ax.contourf(X, Y, Z, **kwargs)
+        cs = ax.contourf(X, Y, Z, **kwargs)
     
     if kind=='contour':
-        ax.contour(X, Y, Z, **kwargs)
-    return fig, ax
+        cs = ax.contour(X, Y, Z, **kwargs)
+
+    if projection=='3d':
+        cax = ax.inset_axes([1.04, 0.01, 0.05, 0.1], transform=ax.transAxes)    
+    else:
+        cax = ax.inset_axes([1.04, 0.2, 0.05, 0.6], transform=ax.transAxes)    
+
+    fig.colorbar(cs, shrink=0.3, cax=cax)
+    return fig, ax, cax
 
