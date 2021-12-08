@@ -3,6 +3,8 @@ import pandas as pd
 from roadrunner import RoadRunner
 import warnings
 
+from sbvar.utils import *
+
 doc_simulation = """
     rr : `RoadRunner` object
         RoadRunner object for simulating SBML model.
@@ -24,10 +26,9 @@ doc_simulation = """
 """
 
 # @_doc_params(simulation_params=doc_simulation)
-class Experiment():
+class Experiment(object):
     """
-    Performs robustness analysis by performing simulations for a range of 
-    parameter values.
+    Generic Experiment class for specifying model and simulation parameters.
 
     Parameters
     ----------
@@ -42,7 +43,7 @@ class Experiment():
         (Number of timepoints x Number of Selections x Number of conditions)
     """
     def __init__(self, rr, start=0, end=5, points=51, 
-        selections=None, steps=None):
+        selections=None, steps=None, steady_state_selections=None):
         self.rr = rr
         self.start = start
         self.end = end
@@ -54,9 +55,18 @@ class Experiment():
         self.flux_ids = [x + "'" for x in self.species_ids]
         self.selections = selections
         self.set_selections()
+        self.steady_state_selections = steady_state_selections
+        self.set_steady_state_selections()
         
+        self.dim = 0
         self.conditions = None
         self.simulations = None
+        self.steady_states = None
+
+    def check_in_model(self, x):
+        in_model = (x in self.species_ids) or (x in self.boundary_ids) \
+            or (x in self.reaction_ids) or (x in self.flux_ids)
+        return in_model
 
     def set_selections(self):
         """
@@ -76,87 +86,35 @@ class Experiment():
                 warnings.warn('Added time to list of selections.')
             # Check if selection is a 
             for x in self.selections:
-                in_model = (x in self.species_ids) or (x in self.boundary_ids)
+                in_model = self.check_in_model(x)
                 if x != 'time' and not in_model:
-                    raise ValueError(
-                        f"{x} is not a floating or boundary species in the model.")
+                    raise ValueError(f"{x} is not in the model.")
             # If selections list was empty, call default behavior
             if len(self.selections)<2:
                 self.selections = None
                 self.set_selections()
 
-    
-class OneWayExperiment(Experiment):
-    """
-    Performs one-way experiment where simulations were performed while varying 
-    one parameter (factor) over a range of values (levels).
-
-    Parameters
-    ----------
-    param: str
-        The name of parameter to change in the roadRunner object.
-    range: array_like
-        The starting and ending values of sequence of levels to test for the
-        parameter of interest.
-    num: int (default: 10)
-        Number of levels to test for the parameter of interest.
-    levels: array_like (optional, default: None)
-        Sequence of values to test for the parameter of interest. 
-        If specified, overrides range and num arguments.
-    {simulation_params}
-
-    """
-    def __init__(self, rr, param, range=(0,10), num=10, levels=None, **kwargs):
-        # initialize attributes related to simulation
-        super().__init__(rr, **kwargs)
-
-        # Initialize attributes related to varying parameter
-        self.param = param
-        self.check_param()
-        self.range = range
-        self.num = num
-        self.levels = levels
-        self.set_conditions()
-        return
-
-    def check_param(self):
-        """Check if parameter is specified in model."""
-        if self.param not in self.rr.model.keys():
-            raise ValueError(f"{self.param} not specified in model.")
-
-    def set_conditions(self):
-        """Generate conditions based on user input."""
-        # If levels 
-        if not self.levels:
-            if len(self.range)!= 2:
-                raise ValueError("Please define range by two values.")
-            for i in self.range:
-                if type(i) not in [int, float]:
-                    raise ValueError("Start/End value must be numerical.")
-            self.conditions = np.linspace(*self.range, num=self.num)
+    def set_steady_state_selections(self):
+        # Default behavior uses all floating species' amounts and reaction rates.
+        if self.steady_state_selections == None:
+            self.steady_state_selections = [x for x in self.selections \
+                if (x not in self.flux_ids) and (x != 'time')]
         else:
-            try:
-                self.conditions = np.array(self.levels, dtype=float)
-            except:
-                raise ValueError("Levels must be numerical.")
-        return
+            for x in self.steady_state_selections:
+                if x != 'time' and not self.check_in_model(x):
+                    raise ValueError(f"{x} is not in the model.")
+        return 
 
-    def get_conditions_df(self):
-        """Generate dataframe of conditions"""
-        df = pd.DataFrame({self.param:self.conditions})
-        return df
-        
     def iter_conditions(self, func, **kwargs):
-        """Wrapper function for iterating through conditions."""
-        outputs = []
-        for value in self.conditions:
-            # Reset model
-            self.rr.reset()
-            # Change parameter value
-            self.rr[self.param] = value
-            output = func(**kwargs)
-            outputs.append(output)
-        return outputs
+        """
+        Wrapper function for resetting model and calling `func`.
+        Parent Experiment class does not have multiple conditions,
+        so function is applied once to initial conditions.
+        """
+        # Reset model
+        self.rr.reset()
+        output = func(**kwargs)
+        return output
     
     def _simulate(self):
         output = self.rr.simulate(
@@ -188,15 +146,254 @@ class OneWayExperiment(Experiment):
         Run and store steady state values of floating species amount
         and reaction rates for each condition.
         """
-        self.steady_state_selections = [x for x in self.selections \
-            if (x not in self.flux_ids) and (x != 'time')]
         self.steady_states = np.vstack(self.iter_conditions(self._steady_state))
         return
 
-    
-            
+    def get_closest_timepoint(self, t):
 
-            
+        return
+
+    def get_timepoint(self, t):
+
+        return
+
+    def get_steady_state(self, variable):
+        if variable not in self.steady_state_selections:
+            raise ValueError(f"{variable} not in steady state selections.")
+        if self.steady_states is None:
+            warnings.warn("Calculating steady state.", UserWarning)
+            self.calc_steady_state()
+        i = self.steady_state_selections.index(variable)
+        vector = self.steady_states[:, i]
+        return vector
+
+class OneWayExperiment(Experiment):
+    """
+    Performs one-way experiment where simulations were performed while varying 
+    one parameter (factor) over a range of values (levels).
+
+    Parameters
+    ----------
+    param: str
+        The name of parameter to change in the roadRunner object.
+    bounds: array_like
+        The starting and ending values of sequence of levels to test for the
+        parameter of interest.
+    num: int (default: 10)
+        Number of levels to test for the parameter of interest.
+    levels: array_like (optional, default: None)
+        Sequence of values to test for the parameter of interest. 
+        If specified, overrides bounds and num arguments.
+    {simulation_params}
+
+    """
+    def __init__(self, rr, param, bounds=(0,10), num=10, levels=None, **kwargs):
+        # initialize attributes related to simulation
+        super().__init__(rr, **kwargs)
+
+        # Initialize attributes related to varying parameter
+        self.dim = 1
+        self.param = param
+        self.check_param()
+        self.bounds = bounds 
+        self.num = num
+        self.levels = levels
+        self.set_conditions()
+        return
+
+    def check_param(self):
+        """Check if parameter is specified in model."""
+        if self.param not in self.rr.model.keys():
+            raise ValueError(f"{self.param} not specified in model.")
+
+    def set_conditions(self):
+        """Generate conditions based on user input."""
+        # If levels not provided, generate sequence of levels
+        if not self.levels:
+            if len(self.bounds)!= 2:
+                raise ValueError("Please define bounds by two values.")
+            for i in self.bounds:
+                if type(i) not in [int, float]:
+                    raise ValueError("Start/End value must be numerical.")
+            self.conditions = np.linspace(*self.bounds, num=self.num)
+        else:
+            try:
+                self.conditions = np.array(self.levels, dtype=float)
+            except:
+                raise ValueError("Levels must be numerical.")
+        return
+
+    def get_conditions_df(self):
+        """Generate dataframe of conditions"""
+        df = pd.DataFrame({self.param:self.conditions})
+        return df
+        
+    def iter_conditions(self, func, **kwargs):
+        """
+        Wrapper function for iterating through each condition.
+        For each condition, the model is reset and the parameter is updated
+        before calling `func`. 
+        Parameters
+        ----------
+        func: function
+        kwargs: dict
+            Dictionary of keyword arguments for `func`.
+        Returns
+        -------
+        outputs: list
+            list of outputs from applying `func` to each condition.
+        """
+        outputs = []
+        for value in self.conditions:
+            # Reset model
+            self.rr.reset()
+            # Change parameter value
+            self.rr[self.param] = value
+            output = func(**kwargs)
+            outputs.append(output)
+        return outputs
+
+class TwoWayExperiment(Experiment):
+    """
+    Performs N-way experiment where simulations were performed while varying 
+    two parameter (factor) over a range of values (levels).
+
+    Parameters
+    ----------
+    param1: str
+        The name of the first parameter to change in the roadRunner object.
+    param2: str
+        The name of the second parameter to change in the roadRunner object.
+    bounds1: array_like
+        The starting and ending values of sequence of levels to test for the
+        first parameter.
+    bounds2: array_like
+        The starting and ending values of sequence of levels to test for the
+        second parameter.
+    num1: int (default: 10)
+        Number of levels to test for the first parameter.
+    num2: int (default: 10)
+        Number of levels to test for the second parameter.
+    levels1: array_like (optional, default: None)
+        Sequence of values to test for the first parameter. 
+        If specified, overrides bounds and num arguments.
+    levels2: array_like (optional, default: None)
+        Sequence of values to test for the second parameter. 
+        If specified, overrides bounds and num arguments.
+    {simulation_params}
+
+    """
+    def __init__(self, rr, param1, param2, 
+        bounds1=(0,10), bounds2=(0,10), num1=10, num2=10, 
+        levels1=None, levels2=None, **kwargs):
+        # initialize attributes related to simulation
+        super().__init__(rr, **kwargs)
+
+        # Initialize attributes related to varying parameter
+        self.dim = 2
+        self.param_list = [param1, param2]
+        self.check_params()
+        self.bounds_list = [bounds1, bounds2]
+        self.num_list = [num1, num2]
+        self.levels_list = [levels1, levels2]
+        self.set_conditions()
+        return
+
+    def check_params(self):
+        """Check if parameter is specified in model."""
+        for param in self.param_list:
+            if param not in self.rr.model.keys():
+                raise ValueError(f"{param} not specified in model.")
+
+    def set_conditions(self):
+        """
+        Generate conditions based on user input.
+        The determined levels for each parameter are stored in
+        `conditions_list`. Conditions (combinations of parameter values) 
+        are stored as list of meshgrids in `mesh_list` and as reshaped 
+        meshvector in `conditions`. 
+        """
+        self.conditions_list = []
+        for i in range(2):
+            levels = self.levels_list[i]
+            bounds = self.bounds_list[i]
+            num = self.num_list[i]
+            # If levels not provided, generate sequence of levels
+            if not levels:
+                if len(bounds)!= 2:
+                    raise ValueError("Please define bounds by two values.")
+            for i in bounds:
+                if type(i) not in [int, float]:
+                    raise ValueError("Start/End value must be numerical.")
+            conditions = np.linspace(*bounds, num=num)
+            self.conditions_list.append(conditions)
+        self.mesh_list = np.meshgrid(*self.conditions_list)
+        # Convert meshgrid into long meshvector format
+        self.conditions = meshes_to_meshvector(self.mesh_list)
+    
+    def get_conditions_df(self):
+        """Generate dataframe of conditions"""
+        df = pd.DataFrame(self.conditions, columns=self.param_list)
+        return df
+
+    def meshvector_to_meshes(self):
+        """
+        Convert meshvector into list of meshgrids.
+        """
+        dim1 = len(self.conditions_list[0])
+        dim2 = len(self.conditions_list[1])
+
+        return meshvector_to_meshes(self.conditions, dim1, dim2)
+
+    def vector_to_mesh(self, v):
+        """
+        Convert vector into list of meshgrids.
+        """
+        dim1 = len(self.conditions_list[0])
+        dim2 = len(self.conditions_list[1])
+        return vector_to_mesh(v, dim1, dim2)
+
+    def iter_conditions(self, func, **kwargs):
+        """
+        Wrapper function for iterating through each condition.
+        For each condition, the model is reset and the parameter is updated
+        before calling `func`. 
+        Parameters
+        ----------
+        func: function
+        kwargs: dict
+            Dictionary of keyword arguments for `func`.
+        Returns
+        -------
+        outputs: list
+            list of outputs from applying `func` to each condition.
+        """
+        outputs = []
+        for i, values in enumerate(self.conditions):
+            # Reset model
+            self.rr.reset()
+            # Change parameter value
+            for param, value in zip(self.param_list, values):
+                self.rr[param] = value
+            output = func(**kwargs)
+            outputs.append(output)
+        return outputs
+
+    def get_steady_state(self, variable, mesh=True):
+        """Get steady state value for variable for each condition."""
+        vector = super().get_steady_state(variable)
+        if mesh:
+            return self.vector_to_mesh(vector)
+        return vector
+    
+    
+    
+
+
+    
+    
+
+                
 
 
     
