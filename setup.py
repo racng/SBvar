@@ -20,5 +20,6 @@ setup(
         'numpy',
         'pandas',
         'matplotlib',
+        'anndata'
     ]
 )

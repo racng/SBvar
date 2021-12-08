@@ -1,9 +1,11 @@
 import numpy as np
+from numpy.core.fromnumeric import var
 import pandas as pd
 from roadrunner import RoadRunner
 import warnings
 
 from sbvar.utils import *
+from sbvar.plotting import *
 
 doc_simulation = """
     rr : `RoadRunner` object
@@ -41,6 +43,10 @@ class Experiment(object):
     simulations: numpy.ndarray
         Three-dimensional stacked arrays of simulation outputs across all conditions.
         (Number of timepoints x Number of Selections x Number of conditions)
+    var: pd.DataFrame
+        Dataframe storing annotation of selections
+    obs: pd.DataFrame
+        Dataframe storing annotations of conditions
     """
     def __init__(self, rr, start=0, end=5, points=51, 
         selections=None, steps=None, steady_state_selections=None):
@@ -149,15 +155,14 @@ class Experiment(object):
         self.steady_states = np.vstack(self.iter_conditions(self._steady_state))
         return
 
-    def get_closest_timepoint(self, t):
-
-        return
-
-    def get_timepoint(self, t):
-
-        return
+    def get_selection_index(self, variable):
+        """Get index of variable in selections."""
+        if variable not in self.selections:
+            raise ValueError(f"{variable} not in steady state selections.")
+        return self.selections.index(variable)
 
     def get_steady_state(self, variable):
+        """Get steady state values."""
         if variable not in self.steady_state_selections:
             raise ValueError(f"{variable} not in steady state selections.")
         if self.steady_states is None:
@@ -166,6 +171,59 @@ class Experiment(object):
         i = self.steady_state_selections.index(variable)
         vector = self.steady_states[:, i]
         return vector
+
+    def get_step_values(self, variable, step):
+        """Get values of variable from time step."""
+        i = self.get_selection_index(variable)
+        if self.simulations is None:
+            warnings.warn("Running simulations.")
+            self.simulate()
+        vector = self.simulations[step, i, :]
+        return vector
+
+    def get_timepoints(self):
+        """Get array of all timepoints."""
+        return self.simulations[:, 0, 0]
+
+    def get_closest_timepoint(self, time):
+        """Get index of timepoint closest to t."""
+        return np.argmin(np.abs(self.get_timepoints()-time))
+
+    def get_time_values(self, variable, time):
+        """Get values of variable from timepoint closest to time."""
+        i = self.get_selection_index(variable)
+        if self.simulations is None:
+            warnings.warn("Running simulations.")
+            self.simulate()
+        step = self.get_closest_timepoint(time)
+        vector = self.get_step_values(self, variable, step)
+        return vector
+
+    def get_values(self, variable, steady_state=True, step=None, time=None):
+        """Get meshgrid of simulation results for a variable. 
+        If steady_state is True, returns steady state value. Otherwise,
+        return variable value at a specific time or step. If time is provided,
+        the nearest time point is returned.
+        Parameters
+        ----------
+        steady_state: boolean
+            If True, returns steady state values. Overrides step and time.
+        step: int
+            Index of time point to get values for.
+        time: float
+            Timepoint value to get values for. Values for the nearest
+            timepoint is returned. 
+        Return
+        ------
+        mesh: np.array
+            2D Meshgrid of values. 
+        """
+        if steady_state:
+            return self.get_steady_state(variable)
+        elif step:
+            return self.get_step_values(variable, step)
+        elif time:
+            return self.get_timepoint_values(variable, time)
 
 class OneWayExperiment(Experiment):
     """
@@ -251,7 +309,42 @@ class OneWayExperiment(Experiment):
             self.rr[self.param] = value
             output = func(**kwargs)
             outputs.append(output)
+        self.rr.reset()
         return outputs
+
+    def conditions_to_meshes(self):
+        """
+        Convert conditions into list of meshgrids.
+        Returns list of meshgrid T and Y, where time is on the x-axis
+        and param is on the y-axis.
+        """
+        t = self.get_timepoints()
+        dim1 = len(t)
+        dim2 =  len(self.conditions)
+        T = np.tile(t, dim2).reshape((dim2, dim1))
+        Y = np.tile(self.conditions, (dim1, 1)).T
+        return T, Y
+
+    def get_timecourse_mesh(self, variable):
+        t = self.get_timepoints()
+        dim1 = len(t)
+        dim2 =  len(self.conditions)
+        s = self.get_selection_index(variable)
+        vector = np.concatenate([self.simulations[:, s, i] for i in range(dim2)])
+        Z = vector_to_mesh(vector, dim1, dim2)
+        return Z
+    
+    def plot_timecourse_mesh(self, variable, kind='contourf', projection='2d', **kwargs):
+        T, Y = self.conditions_to_meshes()
+        Z = self.get_timecourse_mesh(variable)
+        fig, ax = plot_mesh(T, Y, Z, kind=kind, projection=projection, **kwargs)
+        ax.set_xlabel('Time')
+        ax.set_ylabel(self.param)
+        if projection=='3d':
+            ax.set_zlabel(variable)
+        else:
+            ax.set_title(variable)
+        return fig, ax
 
 class TwoWayExperiment(Experiment):
     """
@@ -336,13 +429,14 @@ class TwoWayExperiment(Experiment):
         df = pd.DataFrame(self.conditions, columns=self.param_list)
         return df
 
-    def meshvector_to_meshes(self):
+    def conditions_to_meshes(self):
         """
-        Convert meshvector into list of meshgrids.
+        Convert conditions into list of meshgrids.
+        Returns list of meshgrid X and Y, where param1 is on the x-axis
+        and param2 is on the y-axis.
         """
         dim1 = len(self.conditions_list[0])
         dim2 = len(self.conditions_list[1])
-
         return meshvector_to_meshes(self.conditions, dim1, dim2)
 
     def vector_to_mesh(self, v):
@@ -377,6 +471,7 @@ class TwoWayExperiment(Experiment):
                 self.rr[param] = value
             output = func(**kwargs)
             outputs.append(output)
+        self.rr.reset()
         return outputs
 
     def get_steady_state(self, variable, mesh=True):
@@ -386,6 +481,82 @@ class TwoWayExperiment(Experiment):
             return self.vector_to_mesh(vector)
         return vector
     
+    def get_step_values(self, variable, step, mesh=True):
+        """Get values of variable from time step."""
+        vector = super().get_step_values(variable, step)
+        if mesh:
+            return self.vector_to_mesh(vector)
+        return vector
+    
+    def get_time_values(self, variable, step, mesh=True):
+        """Get values of variable from timepoint closest to time."""
+        vector = super().get_time_values(variable, step)
+        if mesh:
+            return self.vector_to_mesh(vector)
+        return vector
+    
+    def get_mesh(self, variable, steady_state=True, step=None, time=None):
+        """Get meshgrid of simulation results for a variable. 
+        If steady_state is True, returns steady state value. Otherwise,
+        return variable value at a specific time or step. If time is provided,
+        the nearest time point is returned.
+        Parameters
+        ----------
+        steady_state: boolean
+            If True, returns steady state values. Overrides step and time.
+        step: int
+            Index of time point to get values for.
+        time: float
+            Timepoint value to get values for. Values for the nearest
+            timepoint is returned. 
+        Return
+        ------
+        mesh: np.array
+            2D Meshgrid of values. 
+        """
+        if steady_state:
+            return self.get_steady_state(variable)
+        elif step:
+            self.get_step_values(variable, step)
+        elif time:
+            self.get_timepoint_values(variable, time)
+        return
+    
+    def plot_mesh(self, variable, steady_state=True, step=None, time=None, 
+        kind='contourf', projection='2d', **kwargs):
+        """Plot simulation/calculation results as function of the two
+        varying parameters.
+        Parameters
+        ----------
+        steady_state: boolean
+            If True, returns steady state values. Overrides step and time.
+        step: int
+            Index of time point to get values for.
+        time: float
+            Timepoint value to get values for. Values for the nearest
+            timepoint is returned. 
+        Return
+        ------
+        figure: matplotlib.figure
+            Matplotlib figure object
+        ax: matplotlib.axes 
+            Matplotlib axes object
+        """
+        X, Y = self.conditions_to_meshes()
+        Z = self.get_mesh(variable, steady_state=steady_state, step=step, 
+            time=time)
+        fig, ax = plot_mesh(X, Y, Z, kind=kind, **kwargs)
+        ax.set_xlabel(self.param_list[0])
+        ax.set_ylabel(self.param_list[1])
+        if projection=='3d':
+            ax.set_zlabel(variable)
+        else:
+            ax.set_title(variable)
+        return fig, ax
+
+        
+
+
     
     
 
