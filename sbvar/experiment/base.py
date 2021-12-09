@@ -14,7 +14,7 @@ doc_simulation = """
         Ending time for simulations
     points: int (default: 51)
         Number of time points to return for each simulation.
-    steps: int (optional)
+    steps: int (optional, default: None)
         Number of steps at which output is sampled, 
         where the samples are evenly spaced.
         Steps = points - 1. Steps and points may not both be specified. 
@@ -56,56 +56,90 @@ class Experiment(object):
         self.boundary_ids = rr.getBoundarySpeciesIds()
         self.reaction_ids = rr.getReactionIds()
         self.flux_ids = [x + "'" for x in self.species_ids]
-        self.selections = selections
-        self.set_selections()
-        self.steady_state_selections = steady_state_selections
-        self.set_steady_state_selections()
+        self.set_selections(selections)
+        self.set_steady_state_selections(steady_state_selections)
         
         self.dim = 0
         self.conditions = None
         self.simulations = None
         self.steady_states = None
 
-    def check_in_model(self, x):
-        in_model = (x in self.species_ids) or (x in self.boundary_ids) \
-            or (x in self.reaction_ids) or (x in self.flux_ids)
-        return in_model
-
-    def set_selections(self):
+    # def check_in_model(self, x):
+    #     """"""
+    #     in_model = (x in self.species_ids) or (x in self.boundary_ids) \
+    #         or (x in self.reaction_ids) or (x in self.flux_ids)
+    #     return in_model
+    def check_in_rr(self, selection):
+        """Check if selection is specified in the roadrunner object.
+        Parameters
+        ----------
+        selection: str
+            Selection variable to look for in the roadrunner object. 
+        Return
+        ------
+        Returns nothing, but raises error if selection is not found.
         """
-        Check selection values if provided by user. Otherwise, set selection 
-        values as all floating species' amounts and derivatives and reaction rates.
+        # TO-DO: compare with self.rr.model.keys()?
+        if selection not in self.rr.keys():
+            raise ValueError(f"{selection} not in roadrunner object.")
+
+    def set_selections(self, selections):
+        """
+        Set the selections attribute. Use user provided selections if 
+        valide. Otherwise, set selection values to all floating species' 
+        amounts and derivatives and reaction rates.
         Time added to selections if it was omitted by user.
+        Parameters
+        ----------
+        selections: list of str
+            List of variables to be recorded in simulation output.
+        Returns
+        -------
+        Updates `selections` attribute. 
         """
         # Default behavior uses all floating species' amounts and derivatives
         # and reaction rates.
-        if self.selections == None:
+        if selections == None:
             self.selections = ['time'] + self.species_ids + self.flux_ids \
                 + self.reaction_ids
         else:
+            self.selections = selections.copy()
             # Add time selection if omitted
             if 'time' not in self.selections:
                 self.selections.insert(0, 'time')
-                warnings.warn('Added time to list of selections.')
-            # Check if selection is a 
+                warnings.warn('Added time to list of selections.', UserWarning)
+            # Check if selection is in model
             for x in self.selections:
-                in_model = self.check_in_model(x)
-                if x != 'time' and not in_model:
-                    raise ValueError(f"{x} is not in the model.")
+                if x != 'time':
+                    self.check_in_rr(x)
             # If selections list was empty, call default behavior
             if len(self.selections)<2:
-                self.selections = None
-                self.set_selections()
+                self.set_selections(None)
 
-    def set_steady_state_selections(self):
+    def set_steady_state_selections(self, steady_state_selections):
+        """
+        Set the steady state selections attribute. 
+        Use user provided selections if valid. Otherwise, set steady 
+        state selection values to all floating species' amounts and 
+        reaction rates.
+        Parameters
+        ----------
+        steady_state_selections: list of str
+            List of variables to be included in steady state calculations.
+        
+        Returns
+        -------
+        Updates `steady_state_selections` attribute. 
+        """
         # Default behavior uses all floating species' amounts and reaction rates.
-        if self.steady_state_selections == None:
+        if steady_state_selections == None:
             self.steady_state_selections = [x for x in self.selections \
                 if (x not in self.flux_ids) and (x != 'time')]
         else:
+            self.steady_state_selections = steady_state_selections.copy()
             for x in self.steady_state_selections:
-                if x != 'time' and not self.check_in_model(x):
-                    raise ValueError(f"{x} is not in the model.")
+                if x != 'time':
+                    self.check_in_rr(x)
         return 
 
     def iter_conditions(self, func, **kwargs):
@@ -113,6 +147,16 @@ class Experiment(object):
         Wrapper function for resetting model and calling `func`.
         Parent Experiment class does not have multiple conditions,
         so function is applied once to initial conditions.
+
+        Parameters
+        ----------
+        func: callable
+            Function to be called for each condition.
+
+        Returns
+        -------
+        output: 
+            Output is from calling `func` once.
         """
         # Reset model
         self.rr.reset()
