@@ -28,7 +28,6 @@ doc_simulation = """
         and reaction rates.
 """
 
-# @_doc_params(simulation_params=doc_simulation)
 class Experiment(object):
     """
     Generic Experiment class for specifying model and simulation parameters.
@@ -419,10 +418,15 @@ class TwoWayExperiment(Experiment):
             if not levels:
                 if len(bounds)!= 2:
                     raise ValueError("Please define bounds by two values.")
-            for i in bounds:
-                if type(i) not in [int, float]:
-                    raise ValueError("Start/End value must be numerical.")
-            conditions = np.linspace(*bounds, num=num)
+                for i in bounds:
+                    if type(i) not in [int, float]:
+                        raise ValueError("Start/End value must be numerical.")
+                conditions = np.linspace(*bounds, num=num)
+            else:
+                try:
+                    conditions = np.array(self.levels, dtype=float)
+                except:
+                    raise ValueError("Levels must be numerical.")
             self.conditions_list.append(conditions)
         self.mesh_list = np.meshgrid(*self.conditions_list)
         # Convert meshgrid into long meshvector format
@@ -519,11 +523,11 @@ class TwoWayExperiment(Experiment):
             2D Meshgrid of values. 
         """
         if steady_state:
-            return self.get_steady_state(variable)
+            return self.get_steady_state(variable, mesh=True)
         elif step is not None:
-            return self.get_step_values(variable, step)
+            return self.get_step_values(variable, step, mesh=True)
         elif time is not None:
-            return self.get_time_values(variable, time)
+            return self.get_time_values(variable, time, mesh=True)
         
     
     def plot_mesh(self, variable, steady_state=True, step=None, time=None, 
