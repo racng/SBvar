@@ -23,14 +23,13 @@ ant_bi = '''
     S1 = 0.5; k1 = 3.2;
 '''
 
-class TestTwoWayExperiment(unittest.TestCase):
+class TestOneWayExperiment(unittest.TestCase):
     def setUp(self) -> None:
         self.sim_kwargs = {'start':0, 'end':40, 'points':100, 'steps':None}
         self.param_kwargs = {'param':'S1', 'bounds':(0, 10), 'num':5}
-        self.selections = ['time', 'S1', 'S2', 'S3', "S1'", "S2'", "S3'", 'J0', 'J1']
         self.rr = te.loada(ant_bi)
-        self.exp = OneWayExperiment(self.rr, selections=None, conserved_moiety=False, 
-            **self.sim_kwargs, **self.param_kwargs)
+        self.exp = OneWayExperiment(self.rr, selections=None, 
+            conserved_moiety=False, **self.sim_kwargs, **self.param_kwargs)
     
     def test_init(self):
         self.assertCountEqual(self.exp.species_ids, ['S1'])
@@ -40,6 +39,8 @@ class TestTwoWayExperiment(unittest.TestCase):
         self.assertEqual(self.exp.dim, 1)
         self.assertEqual(self.exp.param, self.param_kwargs['param'])
         self.assertEqual(self.exp.bounds, self.param_kwargs['bounds'])
+        self.assertEqual(self.exp.num, self.param_kwargs['num'])
+
         self.assertEqual(self.exp.simulations, None)
         self.assertEqual(self.exp.steady_states, None)
     

@@ -45,18 +45,14 @@ class TwoWayExperiment(Experiment):
         # Initialize attributes related to varying parameter
         self.dim = 2
         self.param_list = [param1, param2]
-        self.check_params()
+        self.check_in_rr(param1)
+        self.check_in_rr(param2)
         self.bounds_list = [bounds1, bounds2]
         self.num_list = [num1, num2]
         self.levels_list = [levels1, levels2]
         self.set_conditions()
+        self.obs = self.get_conditions_df()
         return
-
-    def check_params(self):
-        """Check if parameter is specified in model."""
-        for param in self.param_list:
-            if param not in self.rr.model.keys():
-                raise ValueError(f"{param} not specified in model.")
 
     def set_conditions(self):
         """
@@ -72,7 +68,9 @@ class TwoWayExperiment(Experiment):
             bounds = self.bounds_list[i]
             num = self.num_list[i]
             # If levels not provided, generate sequence of levels
-            if not levels:
+            if  levels is None:
+                if not isinstance(bounds, (list, tuple)):
+                    raise TypeError("Bounds must be a sequence.")
                 if len(bounds)!= 2:
                     raise ValueError("Please define bounds by two values.")
                 for i in bounds:
@@ -80,14 +78,16 @@ class TwoWayExperiment(Experiment):
                         raise ValueError("Start/End value must be numerical.")
                 conditions = np.linspace(*bounds, num=num)
             else:
+                if not isinstance(levels, (list, tuple)):
+                    raise TypeError("Levels must be a sequence.")
                 try:
-                    conditions = np.array(self.levels, dtype=float)
+                    conditions = np.array(levels, dtype=float)
                 except:
                     raise ValueError("Levels must be numerical.")
             self.conditions_list.append(conditions)
-        self.mesh_list = np.meshgrid(*self.conditions_list)
+        mesh_list = np.meshgrid(*self.conditions_list)
         # Convert meshgrid into long meshvector format
-        self.conditions = meshes_to_meshvector(self.mesh_list)
+        self.conditions = meshes_to_meshvector(mesh_list)
     
     def get_conditions_df(self):
         """Generate dataframe of conditions"""
