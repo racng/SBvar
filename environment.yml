@@ -7,6 +7,8 @@ dependencies:
   - coverage
   - coveralls
   - flake8
+  - pytest 
+  - pytest-cov
   - h5py
   - hdf5
   - matplotlib==3.3.4
