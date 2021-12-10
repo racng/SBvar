@@ -163,27 +163,6 @@ class TwoWayExperiment(Experiment):
         self.rr.reset()
         return outputs
 
-    # def get_steady_state(self, variable, mesh=True):
-    #     """Get steady state value for variable for each condition."""
-    #     vector = super().get_steady_state(variable)
-    #     if mesh:
-    #         return self.vector_to_mesh(vector)
-    #     return vector
-    
-    # def get_step_values(self, variable, step, mesh=True):
-    #     """Get values of variable from time step."""
-    #     vector = super().get_step_values(variable, step)
-    #     if mesh:
-    #         return self.vector_to_mesh(vector)
-    #     return vector
-    
-    # def get_time_values(self, variable, time, mesh=True):
-    #     """Get values of variable from timepoint closest to time."""
-    #     vector = super().get_time_values(variable, time)
-    #     if mesh:
-    #         return self.vector_to_mesh(vector)
-    #     return vector
-    
     def get_mesh(self, variable, steady_state=True, step=None, time=None):
         """Get meshgrid of simulation results for a variable. 
         If steady_state is True, returns steady state value. Otherwise,
@@ -203,12 +182,7 @@ class TwoWayExperiment(Experiment):
         mesh: np.array
             2D Meshgrid of values. 
         """
-        # if steady_state:
-        #     return self.get_steady_state(variable, mesh=True)
-        # elif step is not None:
-        #     return self.get_step_values(variable, step, mesh=True)
-        # elif time is not None:
-        #     return self.get_time_values(variable, time, mesh=True)
+
         values = self.get_values(variable, steady_state=steady_state, 
             step=step, time=time)
         return self.vector_to_mesh(values)        
@@ -217,8 +191,11 @@ class TwoWayExperiment(Experiment):
         kind='contourf', projection='2d', cmap='viridis', **kwargs):
         """Plot simulation/calculation results as function of the two
         varying parameters.
+        
         Parameters
         ----------
+        selection: str
+            Name of variable to plot as time courses.
         steady_state: boolean
             If True, returns steady state values. Overrides step and time.
         step: int
@@ -226,8 +203,17 @@ class TwoWayExperiment(Experiment):
         time: float
             Timepoint value to get values for. Values for the nearest
             timepoint is returned. 
-        Return
-        ------
+        kind: str {surface, contour, contourf}
+            Method of plotting 3D timecourse.
+        projection: str {'2d', '3d'}
+            Projection of axes as 2D or 3D graph. surface requires 
+        cmap: str (optional, default: 'viridis')
+            Colormap for coloring selection values. 
+        kwargs: dict
+            Additional keyword arguments for matplotlib plot functions.
+        
+        Returns
+        -------
         figure: matplotlib.figure
             Matplotlib figure object
         ax: matplotlib.axes 

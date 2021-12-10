@@ -235,9 +235,5 @@ class TestTwoWayExperiment(unittest.TestCase):
         mesh = self.exp.get_mesh("S1", steady_state=True)
         np.testing.assert_allclose(mesh, ss)
 
-        
-        
-
-
 if __name__ == '__main__':
     unittest.main()
