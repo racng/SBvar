@@ -1,0 +1,9 @@
+coverage
+coveralls
+pytest
+libroadrunner
+numpy
+pandas
+tellurium
+matplotlib
+anndata
