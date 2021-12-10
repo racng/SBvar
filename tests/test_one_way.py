@@ -109,7 +109,10 @@ class TestOneWayExperiment(unittest.TestCase):
             ('contourf', '2d'), ('contour', '2d'), 
             ('contourf', '3d'), ('contour', '3d'),
             ('surface', '3d')]
-        self.exp.plot_timecourse_mesh('S1', kind='contourf', projection='2d')
-        
+        for kind, proj in combos:
+            self.exp.plot_timecourse_mesh('S1', kind=kind, projection=proj)
+        self.assertRaises(ValueError, self.exp.plot_timecourse_mesh, 'S1',
+            kind='surface', projection='2d')
+
 if __name__ == '__main__':
     unittest.main()

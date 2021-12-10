@@ -235,5 +235,27 @@ class TestTwoWayExperiment(unittest.TestCase):
         mesh = self.exp.get_mesh("S1", steady_state=True)
         np.testing.assert_allclose(mesh, ss)
 
+    def test_plot_mesh(self):
+
+        self.exp.simulate()
+        combos = [
+            ('contourf', '2d'), ('contour', '2d'), 
+            ('contourf', '3d'), ('contour', '3d'),
+            ('surface', '3d')]
+
+        for kind, proj in combos:
+            self.exp.plot_mesh('S1', kind=kind, projection=proj)
+        for kind, proj in combos:
+            self.exp.plot_mesh('S1', kind=kind, projection=proj, 
+                steady_state=False, step=0)
+        for kind, proj in combos:
+            self.exp.plot_mesh('S1', kind=kind, projection=proj, 
+                steady_state=False, time=3)
+        
+        self.assertRaises(ValueError, self.exp.plot_mesh, 'S1',
+            kind='surface', projection='2d')
+        self.assertRaises(ValueError, self.exp.plot_mesh, 'S1', 
+            time=1, step=0)
+
 if __name__ == '__main__':
     unittest.main()
