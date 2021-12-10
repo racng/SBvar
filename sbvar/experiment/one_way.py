@@ -170,6 +170,8 @@ class OneWayExperiment(Experiment):
             Matplotlib figure object
         ax: matplotlib.axes 
             Matplotlib axes object
+        cax: matplotlib.axes 
+            Matplotlib colorbar axes object
         """
         T, Y = self.conditions_to_meshes()
         Z = self.get_timecourse_mesh(selection)
@@ -182,4 +184,4 @@ class OneWayExperiment(Experiment):
             ax.set_zlabel(selection)
         else:
             ax.set_title(selection)
-        return fig, ax
+        return fig, ax, cax

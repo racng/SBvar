@@ -218,6 +218,8 @@ class TwoWayExperiment(Experiment):
             Matplotlib figure object
         ax: matplotlib.axes 
             Matplotlib axes object
+        cax: matplotlib.axes 
+            Matplotlib colorbar axes object
         """
         X, Y = self.conditions_to_meshes()
         Z = self.get_mesh(variable, steady_state=steady_state, step=step, 

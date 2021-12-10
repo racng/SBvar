@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from sbvar import utils
 
 import tellurium as te
@@ -245,12 +247,15 @@ class TestTwoWayExperiment(unittest.TestCase):
 
         for kind, proj in combos:
             self.exp.plot_mesh('S1', kind=kind, projection=proj)
+            plt.close()
         for kind, proj in combos:
             self.exp.plot_mesh('S1', kind=kind, projection=proj, 
                 steady_state=False, step=0)
+            plt.close()
         for kind, proj in combos:
             self.exp.plot_mesh('S1', kind=kind, projection=proj, 
                 steady_state=False, time=3)
+            plt.close()
         
         self.assertRaises(ValueError, self.exp.plot_mesh, 'S1',
             kind='surface', projection='2d')

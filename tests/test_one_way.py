@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sbvar import utils
 
 import tellurium as te
@@ -111,6 +112,7 @@ class TestOneWayExperiment(unittest.TestCase):
             ('surface', '3d')]
         for kind, proj in combos:
             self.exp.plot_timecourse_mesh('S1', kind=kind, projection=proj)
+            plt.close()
         self.assertRaises(ValueError, self.exp.plot_timecourse_mesh, 'S1',
             kind='surface', projection='2d')
 

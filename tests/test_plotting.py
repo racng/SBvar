@@ -1,6 +1,8 @@
 import unittest
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from sbvar.plotting import *
 
 import tellurium as te
@@ -22,7 +24,7 @@ class TestPlotting(unittest.TestCase):
             ('surface', '3d')]
         for kind, proj in combos:
             plot_mesh(self.X, self.Y, self.Z, kind=kind, projection=proj)
-
+            plt.close()
         self.assertRaises(ValueError, plot_mesh, self.X, self.Y, self.Z, 
             kind='surface', projection='2d')
 
