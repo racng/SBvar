@@ -23,6 +23,8 @@ doc_simulation = """
         Time will be added to selections if not specified. If None, 
         keeps track of time and all floating species'amounts and derivatives 
         and reaction rates.
+    conserved_moiety: bool
+        If True, use conserved moiety analysis when calculating steady state.
 """
 
 class Experiment(object):
@@ -47,7 +49,7 @@ class Experiment(object):
     """
     def __init__(self, rr, start=0, end=5, points=51, 
         selections=None, steps=None, steady_state_selections=None, 
-        conservedMoietyAnalysis=False):
+        conserved_moiety=False):
         self.rr = rr
         self.start = start
         self.end = end
@@ -59,7 +61,7 @@ class Experiment(object):
         self.flux_ids = [x + "'" for x in self.species_ids]
         self.set_selections(selections)
         # Note changing conservedMoietyAnalysis resets steadyStateSelections
-        self.rr.conservedMoietyAnalysis = conservedMoietyAnalysis
+        self.conserved_moiety = conserved_moiety
         self.set_steady_state_selections(steady_state_selections)
         
         self.dim = 0
@@ -106,6 +108,8 @@ class Experiment(object):
             self.selections = ['time'] + self.species_ids + self.flux_ids \
                 + self.reaction_ids
         else:
+            if type(selections)!=list:
+                raise TypeError("Selections must be a list of strings.")
             self.selections = selections.copy()
             # Add time selection if omitted
             if 'time' not in self.selections:
@@ -167,6 +171,15 @@ class Experiment(object):
         return [output]
     
     def _simulate(self):
+        """Hidden function for running simulation for the current
+        state of roadrunner `rr` attribute.
+
+        Returns
+        -------
+        output: np.array
+            Simulation output array with size (n x m), where n is the 
+            number of timepoints and m is the number of selections.
+        """
         output = self.rr.simulate(
                         start=self.start, end=self.end, 
                         points=self.points, steps=self.steps, 
@@ -174,38 +187,72 @@ class Experiment(object):
         return output
 
     def simulate(self):
-        """Run and store simulations for each condition."""
+        """Run simulations for each condition. Stored in `simulations`."""
         self.simulations = np.dstack(self.iter_conditions(self._simulate))
         return
 
     def _steady_state(self):
+        """Hidden function for calculating steady state for the current
+        state of roadrunner `rr` attribute. If calculation failed, return
+        NaN array and suggest user to use conserved moiety analysis.
+
+        Returns
+        -------
+        output: np.array
+            Steady state array with size (1 x m), where m is the 
+            number of steady state selections.
+        """
+        self.rr.conservedMoietyAnalysis = self.conserved_moiety
         self.rr.steadyStateSelections = self.steady_state_selections
         try:
             output = self.rr.getSteadyStateValues()
         except:
-            if not self.rr.conservedMoietyAnalysis:
+            if not self.conserved_moiety:
                 warnings.warn("Cannot calculate steady state." \
                     + "If model contains moiety conserved cycles" \
                     + "set conservedMoietyAnalysis to True.", UserWarning)
             output = np.tile(np.NaN, len(self.steady_state_selections))
+        # Simulations fails if conserved moirty is True
+        self.rr.conservedMoietyAnalysis = False # reset 
         return output
 
     def calc_steady_state(self):
         """
-        Run and store steady state values of floating species amount
-        and reaction rates for each condition.
+        Calculate steady state values of steady state selections for 
+        each condition. Stored in `steady_states` attribute.
         """
         self.steady_states = np.vstack(self.iter_conditions(self._steady_state))
         return
 
-    def get_selection_index(self, variable):
-        """Get index of variable in selections."""
-        if variable not in self.selections:
-            raise ValueError(f"{variable} not in steady state selections.")
-        return self.selections.index(variable)
+    def get_selection_index(self, selection):
+        """Get index of selection in `selections` attribute (a list).
+        
+        Parameters
+        ----------
+        selection: str
+            Name of selection for which to get index.
+
+        Returns
+        -------
+        int: Index of selection in the `selections` attribute.
+        """
+        if selection not in self.selections:
+            raise ValueError(f"{selection} not in steady state selections.")
+        return self.selections.index(selection)
 
     def get_steady_state(self, variable):
-        """Get steady state values."""
+        """Get steady state values across all conditions.
+        
+        Parameters
+        ----------
+        selection: str
+            Name of selection for which to get steady state values.
+        Returns
+        -------
+        vector: np.array
+            1D array of steady state values of size n, where n is the 
+            number of conditions.
+        """
         if variable not in self.steady_state_selections:
             raise ValueError(f"{variable} not in steady state selections.")
         if self.steady_states is None:
@@ -267,3 +314,5 @@ class Experiment(object):
             return self.get_step_values(variable, step)
         elif time is not None:
             return self.get_timepoint_values(variable, time)
+
+        

@@ -26,7 +26,7 @@ class TestExperiment(unittest.TestCase):
     def setUp(self) -> None:
         self.rr = te.loada(ant_uni)
         self.exp = Experiment(self.rr, start=0, end=5, points=51, 
-            steps=None, selections=None)
+            steps=None, selections=None, conserved_moiety=False)
 
     def test_init(self):
         exp = self.exp
@@ -52,6 +52,7 @@ class TestExperiment(unittest.TestCase):
         self.assertCountEqual(exp.selections, expected)
 
         # Custom selections
+        self.assertRaises(TypeError, exp.set_selections, "S1")
         exp.set_selections(['S1', 'S2', 'S3'])
         self.assertWarns(UserWarning, exp.set_selections, ['S1', 'S2', 'S3'])
         expected = ['time', 'S1', 'S2', 'S3']
@@ -83,10 +84,15 @@ class TestExperiment(unittest.TestCase):
         expected = np.dstack([out])
         self.exp.simulate()
         self.assertTrue(np.array_equal(self.exp.simulations, expected))
+
+        self.rr.reset()
+        self.exp = Experiment(self.rr, start=0, end=5, points=51, 
+            steps=None, selections=None, conserved_moiety=True)
+        self.exp.simulate()
+        self.assertTrue(np.array_equal(self.exp.simulations, expected))
         return
 
     def test_calc_steady_state(self):
-        
         # Check warning if conservedMoietyAnalysis is False
         self.assertWarns(UserWarning, self.exp.calc_steady_state)
 
@@ -97,10 +103,14 @@ class TestExperiment(unittest.TestCase):
         expected = np.vstack([out])
 
         exp = Experiment(self.rr, start=0, end=5, points=51, 
-            steps=None, selections=None, conservedMoietyAnalysis=True)
+            steps=None, selections=None, conserved_moiety=True)
         exp.calc_steady_state()
         self.assertTrue(np.allclose(exp.steady_states, expected))
 
-    
+    def test_get_selection_index(self):
+        self.assertEqual(self.exp.get_selection_index("time"), 0)
+        self.assertEqual(self.exp.get_selection_index("S1"), 1)
+        self.assertRaises(ValueError, self.exp.get_selection_index, "S4")
 
-        
+
+    # def test_get_steady_state(self):
