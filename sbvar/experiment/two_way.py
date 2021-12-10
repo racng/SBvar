@@ -90,15 +90,27 @@ class TwoWayExperiment(Experiment):
         self.conditions = meshes_to_meshvector(mesh_list)
     
     def get_conditions_df(self):
-        """Generate dataframe of conditions"""
+        """Generate dataframe of conditions
+        
+        Returns
+        -------
+        pd.DataFrame: Dataframe of conditions varying the two parameters, 
+        with two columns denoting the levels of param1 and param2 respectively.
+        """
         df = pd.DataFrame(self.conditions, columns=self.param_list)
         return df
 
     def conditions_to_meshes(self):
         """
-        Convert conditions into list of meshgrids.
-        Returns list of meshgrid X and Y, where param1 is on the x-axis
-        and param2 is on the y-axis.
+        Convert conditions into list of meshgrids with Cartesian indexing.
+        Returns list of meshgrid X and Y, where param1 varies along the x-axis
+        and param2 on the y-axis.
+
+        Returns
+        -------
+        tuple: Tuple of 2D mesh grid for `param1` and `param2`. 
+            Each mesh has size n x m, where n is the number of levels for 
+            `param2` and m is the number of levels for `param1`. 
         """
         dim1 = len(self.conditions_list[0])
         dim2 = len(self.conditions_list[1])
@@ -106,7 +118,19 @@ class TwoWayExperiment(Experiment):
 
     def vector_to_mesh(self, v):
         """
-        Convert vector into list of meshgrids.
+        Convert a vector of values across conditions into meshgrid with 
+        Cartesian indexing. Assumes vector is in the same order as `conditions`.
+
+        Parameters
+        ----------
+        v: np.array
+            1D np.array of values for each condition.
+
+        Returns
+        -------
+        np.array: 2D mesh grid (n x m) of reshaped vector, 
+            where n is the number of levels for `param2` and 
+            m is the number of levels for `param1`. 
         """
         dim1 = len(self.conditions_list[0])
         dim2 = len(self.conditions_list[1])
@@ -139,26 +163,26 @@ class TwoWayExperiment(Experiment):
         self.rr.reset()
         return outputs
 
-    def get_steady_state(self, variable, mesh=True):
-        """Get steady state value for variable for each condition."""
-        vector = super().get_steady_state(variable)
-        if mesh:
-            return self.vector_to_mesh(vector)
-        return vector
+    # def get_steady_state(self, variable, mesh=True):
+    #     """Get steady state value for variable for each condition."""
+    #     vector = super().get_steady_state(variable)
+    #     if mesh:
+    #         return self.vector_to_mesh(vector)
+    #     return vector
     
-    def get_step_values(self, variable, step, mesh=True):
-        """Get values of variable from time step."""
-        vector = super().get_step_values(variable, step)
-        if mesh:
-            return self.vector_to_mesh(vector)
-        return vector
+    # def get_step_values(self, variable, step, mesh=True):
+    #     """Get values of variable from time step."""
+    #     vector = super().get_step_values(variable, step)
+    #     if mesh:
+    #         return self.vector_to_mesh(vector)
+    #     return vector
     
-    def get_time_values(self, variable, time, mesh=True):
-        """Get values of variable from timepoint closest to time."""
-        vector = super().get_time_values(variable, time)
-        if mesh:
-            return self.vector_to_mesh(vector)
-        return vector
+    # def get_time_values(self, variable, time, mesh=True):
+    #     """Get values of variable from timepoint closest to time."""
+    #     vector = super().get_time_values(variable, time)
+    #     if mesh:
+    #         return self.vector_to_mesh(vector)
+    #     return vector
     
     def get_mesh(self, variable, steady_state=True, step=None, time=None):
         """Get meshgrid of simulation results for a variable. 
@@ -179,13 +203,15 @@ class TwoWayExperiment(Experiment):
         mesh: np.array
             2D Meshgrid of values. 
         """
-        if steady_state:
-            return self.get_steady_state(variable, mesh=True)
-        elif step is not None:
-            return self.get_step_values(variable, step, mesh=True)
-        elif time is not None:
-            return self.get_time_values(variable, time, mesh=True)
-        
+        # if steady_state:
+        #     return self.get_steady_state(variable, mesh=True)
+        # elif step is not None:
+        #     return self.get_step_values(variable, step, mesh=True)
+        # elif time is not None:
+        #     return self.get_time_values(variable, time, mesh=True)
+        values = self.get_values(variable, steady_state=steady_state, 
+            step=step, time=time)
+        return self.vector_to_mesh(values)        
     
     def plot_mesh(self, variable, steady_state=True, step=None, time=None, 
         kind='contourf', projection='2d', cmap='viridis', **kwargs):

@@ -64,7 +64,13 @@ class OneWayExperiment(Experiment):
         return
 
     def get_conditions_df(self):
-        """Generate dataframe of conditions"""
+        """Generate dataframe of conditions
+        
+        Returns
+        -------
+        pd.DataFrame: Dataframe with the varying parameter conditions as 
+            a column.
+        """
         df = pd.DataFrame({self.param:self.conditions})
         return df
         

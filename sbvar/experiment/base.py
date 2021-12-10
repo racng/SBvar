@@ -197,11 +197,17 @@ class Experiment(object):
         self.simulations = np.dstack(self.iter_conditions(self._simulate))
         return
 
-    def _steady_state(self):
+    def _steady_state(self, approximate=False):
         """Hidden function for calculating steady state for the current
         state of roadrunner `rr` attribute. If calculation failed, return
         NaN array and suggest user to use conserved moiety analysis.
 
+        Parameters
+        ----------
+        approximate: boolean
+            If True, use approximation to find steady state. Useful if solver
+            cannot find steady state.
+            
         Returns
         -------
         output: np.array
@@ -210,24 +216,35 @@ class Experiment(object):
         """
         self.rr.conservedMoietyAnalysis = self.conserved_moiety
         self.rr.steadyStateSelections = self.steady_state_selections
-        try:
+        if approximate:
+            self.rr.steadyStateApproximate()
             output = self.rr.getSteadyStateValues()
-        except:
-            if not self.conserved_moiety:
-                warnings.warn("Cannot calculate steady state." \
-                    + "If model contains moiety conserved cycles, " \
-                    + "set conserved_moiety to True.", UserWarning)
-            output = np.tile(np.NaN, len(self.steady_state_selections))
+        else:
+            try:
+                output = self.rr.getSteadyStateValues()
+            except:
+                if not self.conserved_moiety:
+                    warnings.warn("Cannot calculate steady state." \
+                        + "If model contains moiety conserved cycles, " \
+                        + "set conserved_moiety to True.", UserWarning)
+                output = np.tile(np.NaN, len(self.steady_state_selections))
         # Simulations fails if conserved moirty is True
         self.rr.conservedMoietyAnalysis = False # reset 
         return output
 
-    def calc_steady_state(self):
+    def calc_steady_state(self, approximate=False):
         """
         Calculate steady state values of steady state selections for 
         each condition. Stored in `steady_states` attribute.
+
+        Parameters
+        ----------
+        approximate: boolean (default: False)
+            If True, use approximation to find steady state. Useful if solver
+            cannot find steady state.
         """
-        self.steady_states = np.vstack(self.iter_conditions(self._steady_state))
+        self.steady_states = np.vstack(self.iter_conditions(
+            self._steady_state, approximate=approximate))
         return
 
     def get_selection_index(self, selection):

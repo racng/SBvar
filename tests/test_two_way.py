@@ -25,11 +25,11 @@ ant_bi = '''
 
 class TestTwoWayExperiment(unittest.TestCase):
     def setUp(self) -> None:
-        self.sim_kwargs = {'start':0, 'end':40, 'points':100, 'steps':None}
+        self.sim_kwargs = {'start':0, 'end':100, 'points':100, 'steps':None}
         self.param_kwargs = {
             'param1':'S1', 'param2':'Xo', 
             'bounds1':(0, 10), 'num1':5,
-            'bounds2':(0.8, 1), 'num2':3,
+            'bounds2':(0.08, 0.1), 'num2':3,
             }
         self.rr = te.loada(ant_bi)
         self.exp = TwoWayExperiment(self.rr, selections=None, 
@@ -53,28 +53,28 @@ class TestTwoWayExperiment(unittest.TestCase):
         self.param_kwargs = {
             'param1':'S1', 'param2':'Xo', 
             'bounds1':(0, 10), 'num1':5,
-            'bounds2':(0.8, 1), 'num2':3,
+            'bounds2':(0.08, 0.1), 'num2':3,
             }
         expected = np.array(
-            [[ 0. ,  0.8],
-            [ 2.5,  0.8],
-            [ 5. ,  0.8],
-            [ 7.5,  0.8],
-            [10. ,  0.8],
-            [ 0. ,  0.9],
-            [ 2.5,  0.9],
-            [ 5. ,  0.9],
-            [ 7.5,  0.9],
-            [10. ,  0.9],
-            [ 0. ,  1. ],
-            [ 2.5,  1. ],
-            [ 5. ,  1. ],
-            [ 7.5,  1. ],
-            [10. ,  1. ]])
+            [[ 0.  ,  0.08],
+            [ 2.5 ,  0.08],
+            [ 5.  ,  0.08],
+            [ 7.5 ,  0.08],
+            [10.  ,  0.08],
+            [ 0.  ,  0.09],
+            [ 2.5 ,  0.09],
+            [ 5.  ,  0.09],
+            [ 7.5 ,  0.09],
+            [10.  ,  0.09],
+            [ 0.  ,  0.1 ],
+            [ 2.5 ,  0.1 ],
+            [ 5.  ,  0.1 ],
+            [ 7.5 ,  0.1 ],
+            [10.  ,  0.1 ]])
         self.exp = TwoWayExperiment(self.rr, **self.sim_kwargs, **self.param_kwargs)
         self.assertTrue(np.allclose(self.exp.conditions, expected))
         np.testing.assert_equal(self.exp.conditions_list, 
-            [[0, 2.5, 5, 7.5, 10], [0.8, 0.9, 1.]])
+            [[0, 2.5, 5, 7.5, 10], [0.08, 0.09, 0.1]])
 
         self.param_kwargs = {
             'param1':'S1', 'param2':'Xo', 
@@ -135,7 +135,109 @@ class TestTwoWayExperiment(unittest.TestCase):
         self.assertRaises(TypeError, TwoWayExperiment, self.rr, 
             **self.sim_kwargs, **self.param_kwargs)
 
+    def test_get_conditions_df(self):
+        expected = pd.DataFrame(np.array(
+            [[ 0.  ,  0.08],
+            [ 2.5 ,  0.08],
+            [ 5.  ,  0.08],
+            [ 7.5 ,  0.08],
+            [10.  ,  0.08],
+            [ 0.  ,  0.09],
+            [ 2.5 ,  0.09],
+            [ 5.  ,  0.09],
+            [ 7.5 ,  0.09],
+            [10.  ,  0.09],
+            [ 0.  ,  0.1 ],
+            [ 2.5 ,  0.1 ],
+            [ 5.  ,  0.1 ],
+            [ 7.5 ,  0.1 ],
+            [10.  ,  0.1 ]]), columns=['S1', 'Xo'])
+        pd.testing.assert_frame_equal(expected, self.exp.get_conditions_df())
+
+    def test_conditions_to_meshes(self):
+        x, y = [0, 2.5, 5, 7.5, 10], [0.08, 0.09, 0.1]
+        expected = np.meshgrid(x, y)
+        np.testing.assert_allclose(self.exp.conditions_to_meshes(), expected)
+
+    def vector_to_mesh(self, v):
+        x, y = [0, 2.5, 5, 7.5, 10], [0.08, 0.09, 1.]
+        X, Y = np.meshgrid(x, y)
+        np.testing.assert_allclose(self.exp.vector_to_mesh(x), X)
+        np.testing.assert_allclose(self.exp.vector_to_mesh(y), Y)
     
-    
+    def test_iter_conditions(self):
+        def save_value():
+            x = self.exp.rr[self.param_kwargs['param1']]
+            y = self.exp.rr[self.param_kwargs['param2']]
+            return ([x, y])
+        expected = np.array(
+            [[ 0.  ,  0.08],
+            [ 2.5 ,  0.08],
+            [ 5.  ,  0.08],
+            [ 7.5 ,  0.08],
+            [10.  ,  0.08],
+            [ 0.  ,  0.09],
+            [ 2.5 ,  0.09],
+            [ 5.  ,  0.09],
+            [ 7.5 ,  0.09],
+            [10.  ,  0.09],
+            [ 0.  ,  0.1 ],
+            [ 2.5 ,  0.1 ],
+            [ 5.  ,  0.1 ],
+            [ 7.5 ,  0.1 ],
+            [10.  ,  0.1 ]])
+        values = self.exp.iter_conditions(save_value)
+        np.testing.assert_allclose(expected, values)
+
+    def test_get_mesh(self):
+        t_init = np.empty((3, 5))
+        for j, x in enumerate([0, 2.5, 5, 7.5, 10]):
+            for i, y in enumerate([0.08, 0.09, 0.1]):
+                self.rr.reset()
+                self.rr['S1'] = x
+                self.rr['Xo'] = y
+                out = self.rr.simulate(**self.sim_kwargs, selections=['S1'])
+                t_init[i, j] = out.flatten()[0]
+
+        # check initial condition
+        mesh = self.exp.get_mesh("S1", steady_state=False, step=0)
+        np.testing.assert_allclose(mesh, t_init)
+        mesh = self.exp.get_mesh("S1", steady_state=False, time=0)
+        np.testing.assert_allclose(mesh, t_init)
+
+        t_final = np.empty((3, 5))
+        for j, x in enumerate([0, 2.5, 5, 7.5, 10]):
+            for i, y in enumerate([0.08, 0.09, 0.1]):
+                self.rr.reset()
+                self.rr['S1'] = x
+                self.rr['Xo'] = y
+                out = self.rr.simulate(**self.sim_kwargs, selections=['S1'])
+                t_final[i, j] = out.flatten()[-1]
+        
+        # check final time point
+        mesh = self.exp.get_mesh("S1", steady_state=False, step=-1)
+        np.testing.assert_allclose(mesh, t_final)
+        end = self.sim_kwargs['end']
+        mesh = self.exp.get_mesh("S1", steady_state=False, time=end)
+        np.testing.assert_allclose(mesh, t_final)
+
+        ss = np.empty((3, 5))
+        for j, x in enumerate([0, 2.5, 5, 7.5, 10]):
+            for i, y in enumerate([0.08, 0.09, 0.1]):
+                self.rr.reset()
+                self.rr['S1'] = x
+                self.rr['Xo'] = y
+                self.rr.steadyStateApproximate()
+                out = self.rr.getSteadyStateValues()[0]
+                ss[i, j] = out
+        # self.exp.conserved_moiety = True
+        self.exp.calc_steady_state(approximate=True)
+        mesh = self.exp.get_mesh("S1", steady_state=True)
+        np.testing.assert_allclose(mesh, ss)
+
+        
+        
+
+
 if __name__ == '__main__':
     unittest.main()
