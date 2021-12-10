@@ -68,6 +68,9 @@ class Experiment(object):
         self.conditions = None
         self.simulations = None
         self.steady_states = None
+        # TO-DO: populate with initial conditions
+        self.obs = pd.DataFrame(self.conditions) 
+        self.var = pd.DataFrame(self.selections)
 
     # def check_in_model(self, x):
     #     """"""
@@ -159,6 +162,8 @@ class Experiment(object):
         ----------
         func: callable
             Function to be called for each condition.
+        kwargs: dict
+            Dictionary of keyword arguments for `func`.
 
         Returns
         -------
@@ -168,6 +173,7 @@ class Experiment(object):
         # Reset model
         self.rr.reset()
         output = func(**kwargs)
+        self.rr.reset()
         return [output]
     
     def _simulate(self):

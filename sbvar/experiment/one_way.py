@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import warnings
+from collections.abc import Iterable
 
 from sbvar.experiment import Experiment
 from sbvar.utils import *
@@ -15,12 +16,12 @@ class OneWayExperiment(Experiment):
     ----------
     param: str
         The name of parameter to change in the roadRunner object.
-    bounds: array_like
+    bounds: list or tuple
         The starting and ending values of sequence of levels to test for the
         parameter of interest.
     num: int (default: 10)
         Number of levels to test for the parameter of interest.
-    levels: array_like (optional, default: None)
+    levels: list or tuple (optional, default: None)
         Sequence of values to test for the parameter of interest. 
         If specified, overrides bounds and num arguments.
     {simulation_params}
@@ -33,29 +34,29 @@ class OneWayExperiment(Experiment):
         # Initialize attributes related to varying parameter
         self.dim = 1
         self.param = param
-        self.check_param()
+        self.check_in_rr(param)
         self.bounds = bounds 
         self.num = num
         self.levels = levels
         self.set_conditions()
+        self.obs = self.get_conditions_df()
         return
-
-    def check_param(self):
-        """Check if parameter is specified in model."""
-        if self.param not in self.rr.model.keys():
-            raise ValueError(f"{self.param} not specified in model.")
 
     def set_conditions(self):
         """Generate conditions based on user input."""
         # If levels not provided, generate sequence of levels
-        if not self.levels:
+        if self.levels is None:
+            if not isinstance(self.bounds, (list, tuple)):
+                raise TypeError("Bounds must be a sequence.")
             if len(self.bounds)!= 2:
                 raise ValueError("Please define bounds by two values.")
             for i in self.bounds:
                 if type(i) not in [int, float]:
-                    raise ValueError("Start/End value must be numerical.")
+                    raise TypeError("Start/End value must be numerical.")
             self.conditions = np.linspace(*self.bounds, num=self.num)
         else:
+            if not isinstance(self.levels, (list, tuple)):
+                raise TypeError("Levels must be a sequence.")
             try:
                 self.conditions = np.array(self.levels, dtype=float)
             except:
@@ -72,15 +73,18 @@ class OneWayExperiment(Experiment):
         Wrapper function for iterating through each condition.
         For each condition, the model is reset and the parameter is updated
         before calling `func`. 
+
         Parameters
         ----------
-        func: function
+        func: callable
+            Function to be called for each condition.
         kwargs: dict
             Dictionary of keyword arguments for `func`.
+
         Returns
         -------
         outputs: list
-            list of outputs from applying `func` to each condition.
+            List of outputs from applying `func` to each condition.
         """
         outputs = []
         for value in self.conditions:
@@ -95,9 +99,15 @@ class OneWayExperiment(Experiment):
 
     def conditions_to_meshes(self):
         """
-        Convert conditions into list of meshgrids.
+        Convert conditions into list of meshgrids with Cartesian indexing.
         Returns list of meshgrid T and Y, where time is on the x-axis
         and param is on the y-axis.
+
+        Returns
+        -------
+        tuple: Tuple of 2D mesh for time and the varying parameter. 
+            Each mesh has size n x m, where n is the number of conditions
+            and m is the number of time points. 
         """
         t = self.get_timepoints()
         dim1 = len(t)
@@ -106,26 +116,64 @@ class OneWayExperiment(Experiment):
         Y = np.tile(self.conditions, (dim1, 1)).T
         return T, Y
 
-    def get_timecourse_mesh(self, variable):
+    def get_timecourse_mesh(self, selection):
+        """
+        Get time courses of a variable across conditions as a meshgrid 
+        with Cartesian indexing.
+
+        Parameters
+        ----------
+        selection: str
+            Name of variable for which to get time courses.
+
+        Returns
+        -------
+        Z: np.array 
+            2D meshgrid (n x m) of time courses where n is the
+            number of conditions and m is the number of time pointss.
+        """
         t = self.get_timepoints()
         dim1 = len(t)
         dim2 =  len(self.conditions)
-        s = self.get_selection_index(variable)
+        s = self.get_selection_index(selection)
         vector = np.concatenate([self.simulations[:, s, i] for i in range(dim2)])
         Z = vector_to_mesh(vector, dim1, dim2)
         return Z
     
-    def plot_timecourse_mesh(self, variable, kind='contourf', projection='2d', 
+    def plot_timecourse_mesh(self, selection, kind='contourf', projection='2d', 
         cmap='viridis', **kwargs):
+        """
+        Plot 3D time courses across all conditions. 
+        
+        Parameters
+        ----------
+        selection: str
+            Name of variable to plot as time courses.
+        kind: str {surface, contour, contourf}
+            Method of plotting 3D timecourse.
+        projection: str {'2d', '3d'}
+            Projection of axes as 2D or 3D graph. surface requires 
+        cmap: str (optional, default: 'viridis')
+            Colormap for coloring selection values. 
+        kwargs: dict
+            Additional keyword arguments for matplotlib plot functions.
+
+        Returns
+        -------
+        figure: matplotlib.figure
+            Matplotlib figure object
+        ax: matplotlib.axes 
+            Matplotlib axes object
+        """
         T, Y = self.conditions_to_meshes()
-        Z = self.get_timecourse_mesh(variable)
+        Z = self.get_timecourse_mesh(selection)
         fig, ax, cax = plot_mesh(T, Y, Z, kind=kind, projection=projection, 
             cmap=cmap, **kwargs)
         ax.set_xlabel('Time')
         ax.set_ylabel(self.param)
-        cax.set_title(variable)
+        cax.set_title(selection)
         if projection=='3d':
-            ax.set_zlabel(variable)
+            ax.set_zlabel(selection)
         else:
-            ax.set_title(variable)
+            ax.set_title(selection)
         return fig, ax
