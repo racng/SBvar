@@ -1,0 +1,23 @@
+language: python
+python:
+  - 3.8
+  - 3.7
+  - 3.6
+
+# what branches should be evaluated
+branches:
+    only:
+        - main
+        
+install:
+  - pip install -r requirements.txt
+  - pip install .
+
+# the actual commands to run
+script:
+    - python -m pytest --cov-report term --cov=. tests/
+
+# generate a coverage report to send to back to user
+after_success:
+    - coverage report
+    - coveralls
