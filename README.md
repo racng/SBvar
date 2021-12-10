@@ -1,10 +1,12 @@
 # sbvar: Varying Parameter Analysis for Systems Biology
+[![Build Status](https://app.travis-ci.com/racng/SBvar.svg?branch=main)](https://app.travis-ci.com/racng/SBvar)
+[![license](https://img.shields.io/github/license/racng/SBvar.svg?style=flat-square)](https://github.com/racng/SBvar.svg/main/LICENSE)
 
 Sbvar is a Python package for performing robustness analysis to characterize how the dynamics of biological networks respond to changes in parameters. User can design one-way experiment to vary one parameter or two-way experiments to vary two parameters over any range of values. For every condition, sbvar finds the steady states or dynamic time series of species concentrations, species derivatives, and reaction rates. These responses' relationships with the varying parameter(s) can be further visualized by 2D or 3D plots.
 
 Sbvar integrates existing packages that specializes in simulations (tellurium and roadrunner), data structure and transformations (numpy, pandas, anndata), and visualization (matplotlib). Models are loaded using SBML or antimony input via tellurium. 
 
-General workflow of analysis:
+## General workflow of analysis:
 1. Load reaction model using tellurium.
 2. Create experiment by specifying the model, parameter(s) to change, and the associated range of values. Examples of parameters:
     - Floating species initial concentration 
@@ -18,7 +20,8 @@ General workflow of analysis:
     - Steady State
 4. Visualization of timeseries and steady states.
 5. Flexible downstream analysis on time series based on custom functions.  
-# Usage
+
+# Usage Example
 ## Step 1:
 Loading an antimony model as a roadrunner object using tellurium. 
 ```Python

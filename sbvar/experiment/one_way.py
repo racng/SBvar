@@ -185,3 +185,38 @@ class OneWayExperiment(Experiment):
         else:
             ax.set_title(selection)
         return fig, ax, cax
+
+    def plot_line(self, selection, steady_state=True, step=None, time=None, 
+        **kwargs):
+        """
+        Plot trend of selection value as a function of the `param`. 
+        
+        Parameters
+        ----------
+        selection: str
+            Name of variable to plot as time courses.
+        steady_state: boolean
+            If True, returns steady state values. Overrides step and time.
+        step: int
+            Index of time point to get values for.
+        time: float
+            Timepoint value to get values for. Values for the nearest
+            timepoint is returned. 
+        kwargs: dict
+            Additional keyword arguments for matplotlib plot functions.
+
+        Returns
+        -------
+        figure: matplotlib.figure
+            Matplotlib figure object
+        ax: matplotlib.axes 
+            Matplotlib axes object
+        """
+        fig, ax = plt.subplots()
+        x = self.conditions
+        y = self.get_values(selection, steady_state=steady_state, step=step, 
+            time=time)
+        plt.plot(x, y)
+        plt.xlabel(self.param)
+        plt.ylabel(selection)
+        return fig, ax

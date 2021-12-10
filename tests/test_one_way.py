@@ -115,6 +115,16 @@ class TestOneWayExperiment(unittest.TestCase):
             plt.close()
         self.assertRaises(ValueError, self.exp.plot_timecourse_mesh, 'S1',
             kind='surface', projection='2d')
+    
+    def test_plot_line(self):
+        self.exp.simulate()
+        self.exp.calc_steady_state()
+        self.exp.plot_line("S1", steady_state=True)
+        self.exp.plot_line("S1", steady_state=False, time=0)
+        self.exp.plot_line("S1", steady_state=False, step=-1)
+        self.assertRaises(ValueError, self.exp.plot_line, 'S4')
+        self.assertRaises(ValueError, self.exp.plot_line, "S1", time=0)
+        self.assertRaises(ValueError, self.exp.plot_line, "S1", step=-1)
 
 if __name__ == '__main__':
     unittest.main()

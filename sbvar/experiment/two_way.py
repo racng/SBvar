@@ -163,7 +163,7 @@ class TwoWayExperiment(Experiment):
         self.rr.reset()
         return outputs
 
-    def get_mesh(self, variable, steady_state=True, step=None, time=None):
+    def get_mesh(self, selection, steady_state=True, step=None, time=None):
         """Get meshgrid of simulation results for a variable. 
         If steady_state is True, returns steady state value. Otherwise,
         return variable value at a specific time or step. If time is provided,
@@ -183,11 +183,11 @@ class TwoWayExperiment(Experiment):
             2D Meshgrid of values. 
         """
 
-        values = self.get_values(variable, steady_state=steady_state, 
+        values = self.get_values(selection, steady_state=steady_state, 
             step=step, time=time)
         return self.vector_to_mesh(values)        
     
-    def plot_mesh(self, variable, steady_state=True, step=None, time=None, 
+    def plot_mesh(self, selection, steady_state=True, step=None, time=None, 
         kind='contourf', projection='2d', cmap='viridis', **kwargs):
         """Plot simulation/calculation results as function of the two
         varying parameters.
@@ -222,15 +222,15 @@ class TwoWayExperiment(Experiment):
             Matplotlib colorbar axes object
         """
         X, Y = self.conditions_to_meshes()
-        Z = self.get_mesh(variable, steady_state=steady_state, step=step, 
+        Z = self.get_mesh(selection, steady_state=steady_state, step=step, 
             time=time)
         fig, ax, cax = plot_mesh(X, Y, Z, kind=kind, projection=projection, 
             cmap=cmap, **kwargs)
         ax.set_xlabel(self.param_list[0])
         ax.set_ylabel(self.param_list[1])
-        cax.set_title(variable)
+        cax.set_title(selection)
         if projection=='3d':
-            ax.set_zlabel(variable)
+            ax.set_zlabel(selection)
         else:
-            ax.set_title(variable)
+            ax.set_title(selection)
         return fig, ax, cax

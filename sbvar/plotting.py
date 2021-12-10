@@ -5,6 +5,7 @@ def plot_mesh(X, Y, Z, kind='contourf', projection='2d',
     **kwargs):
     """
     Plot three-dimensional data as 3D surface, 2D filled contour, or 2D contours.
+    
     Parameters
     ----------
     X: np.array
@@ -22,6 +23,15 @@ def plot_mesh(X, Y, Z, kind='contourf', projection='2d',
     kwargs: 
         Keywords arguments for matplotib.pyplot.contour, matplot.pyplot.contourf, 
         or Axes3D.plot_surface
+
+    Returns
+    -------
+    figure: matplotlib.figure
+        Matplotlib figure object
+    ax: matplotlib.axes 
+        Matplotlib axes object
+    cax: matplotlib.axes 
+        Matplotlib colorbar axes object
     """
     if projection=='3d':
         fig, ax = plt.subplots(subplot_kw={"projection": projection})

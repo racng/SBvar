@@ -207,7 +207,7 @@ class Experiment(object):
         approximate: boolean
             If True, use approximation to find steady state. Useful if solver
             cannot find steady state.
-            
+
         Returns
         -------
         output: np.array
@@ -260,7 +260,7 @@ class Experiment(object):
         int: Index of selection in the `selections` attribute.
         """
         if selection not in self.selections:
-            raise ValueError(f"{selection} not in steady state selections.")
+            raise ValueError(f"{selection} not in selections.")
         return self.selections.index(selection)
 
     def get_steady_state(self, selection):
