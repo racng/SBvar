@@ -1,0 +1,36 @@
+name: test-environment
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - anndata=0.7.8
+  - coverage
+  - coveralls
+  - flake8
+  - h5py
+  - hdf5
+  - matplotlib=3.3.4
+  - pip=21.0.1
+  - python>=3.7
+  - pyyaml
+  - scipy
+  - seaborn
+  - setuptools
+  - toml
+  - yam
+  - pip:
+    - antimony==2.12.0.2
+    - ipykernel==5.5.3
+    - ipython==7.22.0
+    - ipython-genutils==0.2.0
+    - jupyter-client==6.1.12
+    - jupyter-core==4.7.1
+    - libroadrunner==2.0.5
+    - markupsafe==1.1.1
+    - numpy==1.19.3
+    - packaging=20.9
+    - pandas==1.2.4
+    - pytest==6.2.3
+    - rrplugins==2.0.4
+    - sbml2matlab==1.2.3
+    - tellurium==2.2.0
