@@ -46,7 +46,8 @@ class Experiment(object):
         Dataframe storing annotations of conditions
     """
     def __init__(self, rr, start=0, end=5, points=51, 
-        selections=None, steps=None, steady_state_selections=None):
+        selections=None, steps=None, steady_state_selections=None, 
+        conservedMoietyAnalysis=False):
         self.rr = rr
         self.start = start
         self.end = end
@@ -57,6 +58,8 @@ class Experiment(object):
         self.reaction_ids = rr.getReactionIds()
         self.flux_ids = [x + "'" for x in self.species_ids]
         self.set_selections(selections)
+        # Note changing conservedMoietyAnalysis resets steadyStateSelections
+        self.rr.conservedMoietyAnalysis = conservedMoietyAnalysis
         self.set_steady_state_selections(steady_state_selections)
         
         self.dim = 0
@@ -155,13 +158,13 @@ class Experiment(object):
 
         Returns
         -------
-        output: 
-            Output is from calling `func` once.
+        output: list
+            List containing output from calling `func` once.
         """
         # Reset model
         self.rr.reset()
         output = func(**kwargs)
-        return output
+        return [output]
     
     def _simulate(self):
         output = self.rr.simulate(
@@ -178,14 +181,13 @@ class Experiment(object):
     def _steady_state(self):
         self.rr.steadyStateSelections = self.steady_state_selections
         try:
-            self.rr.steadyState()
+            output = self.rr.getSteadyStateValues()
         except:
-            self.rr.conservedMoietyAnalysis = True 
-            # Changing conservedMoietyAnalysis resets steadyStateSelections
-            self.rr.steadyStateSelections = self.steady_state_selections
-            self.rr.steadyState()
-        output = self.rr.getSteadyStateValues()
-        self.rr.conservedMoietyAnalysis = False # reset to default
+            if not self.rr.conservedMoietyAnalysis:
+                warnings.warn("Cannot calculate steady state." \
+                    + "If model contains moiety conserved cycles" \
+                    + "set conservedMoietyAnalysis to True.", UserWarning)
+            output = np.tile(np.NaN, len(self.steady_state_selections))
         return output
 
     def calc_steady_state(self):

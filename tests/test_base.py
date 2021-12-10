@@ -74,10 +74,33 @@ class TestExperiment(unittest.TestCase):
     def test_iter_conditions(self):
         def dummy():
             return 'dummy'
-        self.assertEqual(self.exp.iter_conditions(dummy), "dummy")
+        expected = ['dummy']
+        self.assertEqual(self.exp.iter_conditions(dummy), expected)
 
     def test_simulate(self):
+        out = self.rr.simulate(start=0, end=5, points=51, steps=None, 
+            selections=['time', 'S1', 'S2', 'S3', "S1'", "S2'", "S3'", 'J0', 'J1'])
+        expected = np.dstack([out])
         self.exp.simulate()
+        self.assertTrue(np.array_equal(self.exp.simulations, expected))
         return
 
+    def test_calc_steady_state(self):
+        
+        # Check warning if conservedMoietyAnalysis is False
+        self.assertWarns(UserWarning, self.exp.calc_steady_state)
+
+        # Check steady state if conservedMoietyAnalysis is True
+        self.rr.conservedMoietyAnalysis = True
+        self.rr.steadyStateSelections = ['S1', 'S2', 'S3', 'J0', 'J1']
+        out = self.rr.getSteadyStateValues()
+        expected = np.vstack([out])
+
+        exp = Experiment(self.rr, start=0, end=5, points=51, 
+            steps=None, selections=None, conservedMoietyAnalysis=True)
+        exp.calc_steady_state()
+        self.assertTrue(np.allclose(exp.steady_states, expected))
+
     
+
+        
