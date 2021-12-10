@@ -24,9 +24,11 @@ ant_bi = '''
 
 class TestExperiment(unittest.TestCase):
     def setUp(self) -> None:
+        self.kwargs = {'start':0, 'end':500, 'points':100, 'steps':None}
+        self.selections = ['time', 'S1', 'S2', 'S3', "S1'", "S2'", "S3'", 'J0', 'J1']
         self.rr = te.loada(ant_uni)
-        self.exp = Experiment(self.rr, start=0, end=5, points=51, 
-            steps=None, selections=None, conserved_moiety=False)
+        self.exp = Experiment(self.rr, selections=None, conserved_moiety=False, 
+            **self.kwargs)
 
     def test_init(self):
         exp = self.exp
@@ -47,7 +49,7 @@ class TestExperiment(unittest.TestCase):
     def test_set_selections(self):
         # Default behavior
         exp = self.exp
-        expected = ['time', 'S1', 'S2', 'S3', "S1'", "S2'", "S3'", 'J0', 'J1']
+        expected = self.selections
         exp.set_selections(None)
         self.assertCountEqual(exp.selections, expected)
 
@@ -79,15 +81,13 @@ class TestExperiment(unittest.TestCase):
         self.assertEqual(self.exp.iter_conditions(dummy), expected)
 
     def test_simulate(self):
-        out = self.rr.simulate(start=0, end=5, points=51, steps=None, 
-            selections=['time', 'S1', 'S2', 'S3', "S1'", "S2'", "S3'", 'J0', 'J1'])
+        out = self.rr.simulate(selections=self.selections, **self.kwargs)
         expected = np.dstack([out])
         self.exp.simulate()
         self.assertTrue(np.array_equal(self.exp.simulations, expected))
 
         self.rr.reset()
-        self.exp = Experiment(self.rr, start=0, end=5, points=51, 
-            steps=None, selections=None, conserved_moiety=True)
+        self.exp.conserved_moiety = True
         self.exp.simulate()
         self.assertTrue(np.array_equal(self.exp.simulations, expected))
         return
@@ -102,10 +102,11 @@ class TestExperiment(unittest.TestCase):
         out = self.rr.getSteadyStateValues()
         expected = np.vstack([out])
 
-        exp = Experiment(self.rr, start=0, end=5, points=51, 
-            steps=None, selections=None, conserved_moiety=True)
-        exp.calc_steady_state()
-        self.assertTrue(np.allclose(exp.steady_states, expected))
+        self.exp.conserved_moiety = True
+        self.exp.calc_steady_state()
+        self.assertTrue(np.allclose(self.exp.steady_states, expected))
+        self.assertAlmostEqual(self.exp.steady_states[0, 0], 0)
+        self.assertAlmostEqual(self.exp.steady_states[0, 2], 10)
 
     def test_get_selection_index(self):
         self.assertEqual(self.exp.get_selection_index("time"), 0)
@@ -113,4 +114,86 @@ class TestExperiment(unittest.TestCase):
         self.assertRaises(ValueError, self.exp.get_selection_index, "S4")
 
 
-    # def test_get_steady_state(self):
+    def test_get_steady_state(self):
+        self.assertRaises(ValueError, self.exp.get_steady_state, "S4")
+
+        self.rr.conservedMoietyAnalysis = True
+        self.rr.steadyStateSelections = ['S1', 'S2', 'S3', 'J0', 'J1']
+        ss = np.vstack([self.rr.getSteadyStateValues()])
+        
+        self.exp.conserved_moiety = True
+        self.assertWarns(UserWarning, self.exp.get_steady_state, "S1")
+        self.exp.calc_steady_state()
+        self.assertTrue(np.allclose(self.exp.get_steady_state('S1'), ss[:, 0]))
+        self.assertTrue(np.allclose(self.exp.get_steady_state('S2'), ss[:, 1]))
+        self.assertTrue(np.allclose(self.exp.get_steady_state('S3'), ss[:, 2]))
+        self.assertTrue(np.allclose(self.exp.get_steady_state('J0'), ss[:, 3]))
+        self.assertTrue(np.allclose(self.exp.get_steady_state('J1'), ss[:, 4]))
+        
+    def test_get_step_values(self):
+        self.assertWarns(UserWarning, self.exp.get_step_values, "S1", 0)
+        self.exp.simulate()
+        # Check initial values
+        self.assertTrue(np.allclose(self.exp.get_step_values('S1', 0), [10]))
+        self.assertTrue(np.allclose(self.exp.get_step_values('S2', 0), [0]))
+        self.assertTrue(np.allclose(self.exp.get_step_values('S3', 0), [0]))
+        # Check approximate steady state values
+        self.assertTrue(np.allclose(self.exp.get_step_values('S3', -1), [10]))
+        self.assertTrue(np.allclose(self.exp.get_step_values('S2', -1), [0]))
+        self.assertTrue(np.allclose(self.exp.get_step_values('S1', -1), [0]))
+
+    def test_get_timepoints(self):
+        self.assertWarns(UserWarning, self.exp.get_timepoints)
+        
+        expected = np.linspace(self.kwargs['start'], self.kwargs['end'], 
+            num=self.kwargs['points'])
+        self.assertTrue(np.allclose(self.exp.get_timepoints(), expected))
+
+    def test_get_closest_timepoint(self):
+        self.assertEqual(self.exp.get_closest_timepoint(0), 0)
+        end, points = self.kwargs['end'], self.kwargs['points']
+        self.assertEqual(self.exp.get_closest_timepoint(end), points - 1)
+
+    def test_get_time_values(self):
+        self.assertWarns(UserWarning, self.exp.get_time_values, "S1", 0)
+        self.exp.simulate()
+        # Check initial values
+        self.assertTrue(np.allclose(self.exp.get_time_values('S1', 0), [10]))
+        self.assertTrue(np.allclose(self.exp.get_time_values('S2', 0), [0]))
+        self.assertTrue(np.allclose(self.exp.get_time_values('S3', 0), [0]))
+        # Check approximate steady state values
+        self.assertTrue(np.allclose(self.exp.get_time_values('S3', 500), [10]))
+        self.assertTrue(np.allclose(self.exp.get_time_values('S2', 500), [0]))
+        self.assertTrue(np.allclose(self.exp.get_time_values('S1', 500), [0]))
+
+    def test_get_values(self):
+        self.assertRaises(ValueError, self.exp.get_values, 'S4')
+        self.assertRaises(ValueError, self.exp.get_values, 'S1', 
+            steady_state=True, time=1)
+        self.assertRaises(ValueError, self.exp.get_values, 'S1', 
+            steady_state=True, time=1)
+        self.assertRaises(ValueError, self.exp.get_values, 'S1', 
+            step=1, time=1)
+
+        self.exp.conserved_moiety = True
+        expected = self.exp.get_steady_state('S1')
+        self.assertCountEqual(self.exp.get_values('S1'), expected)
+
+        expected = self.exp.get_step_values('S1', -1)
+        self.assertCountEqual(
+            self.exp.get_values('S1', steady_state=False, step=-1), 
+            expected)
+
+        expected = self.exp.get_time_values('S1', 500)
+        self.assertCountEqual(
+            self.exp.get_values('S1', steady_state=False, time=500), 
+            expected)
+
+if __name__ == '__main__':
+    unittest.main()
+        
+        
+
+
+        
+

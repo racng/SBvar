@@ -209,8 +209,8 @@ class Experiment(object):
         except:
             if not self.conserved_moiety:
                 warnings.warn("Cannot calculate steady state." \
-                    + "If model contains moiety conserved cycles" \
-                    + "set conservedMoietyAnalysis to True.", UserWarning)
+                    + "If model contains moiety conserved cycles, " \
+                    + "set conserved_moiety to True.", UserWarning)
             output = np.tile(np.NaN, len(self.steady_state_selections))
         # Simulations fails if conserved moirty is True
         self.rr.conservedMoietyAnalysis = False # reset 
@@ -230,7 +230,7 @@ class Experiment(object):
         Parameters
         ----------
         selection: str
-            Name of selection for which to get index.
+            Name of variable for which to get index.
 
         Returns
         -------
@@ -240,31 +240,46 @@ class Experiment(object):
             raise ValueError(f"{selection} not in steady state selections.")
         return self.selections.index(selection)
 
-    def get_steady_state(self, variable):
+    def get_steady_state(self, selection):
         """Get steady state values across all conditions.
         
         Parameters
         ----------
         selection: str
-            Name of selection for which to get steady state values.
+            Name of variable for which to get steady state values.
         Returns
         -------
         vector: np.array
             1D array of steady state values of size n, where n is the 
             number of conditions.
         """
-        if variable not in self.steady_state_selections:
-            raise ValueError(f"{variable} not in steady state selections.")
+        if selection not in self.steady_state_selections:
+            raise ValueError(f"{selection} not in steady state selections.")
         if self.steady_states is None:
             warnings.warn("Calculating steady state.", UserWarning)
             self.calc_steady_state()
-        i = self.steady_state_selections.index(variable)
+        i = self.steady_state_selections.index(selection)
         vector = self.steady_states[:, i]
         return vector
 
-    def get_step_values(self, variable, step):
-        """Get values of variable from time step."""
-        i = self.get_selection_index(variable)
+    def get_step_values(self, selection, step):
+        """Get time series values for a variable at a particular time step 
+        across all conditions.
+        
+        Parameters
+        ----------
+        selection: str
+            Name of variable for which to get time series values.
+        step: int
+            Index of time step in time series from which to get values.
+
+        Returns
+        -------
+        vector: np.array
+            1D array of time series values of size n, where n is the 
+            number of conditions.
+        """
+        i = self.get_selection_index(selection)
         if self.simulations is None:
             warnings.warn("Running simulations.")
             self.simulate()
@@ -272,15 +287,49 @@ class Experiment(object):
         return vector
 
     def get_timepoints(self):
-        """Get array of all timepoints."""
+        """Get array of all timepoints. Requires running simulations to
+        determine timepoints generated.
+        Returns
+        -------
+        np.array: 1D array of time points of timeseries of size t, 
+            where t is the number of `points` specified.
+        """
+        if self.simulations is None:
+            warnings.warn("Running simulations.")
+            self.simulate()
         return self.simulations[:, 0, 0]
 
     def get_closest_timepoint(self, time):
-        """Get index of timepoint closest to t."""
+        """Get index of timepoint closest to specified time.
+        
+        Parameters
+        ----------
+        time: int, float
+            Time value to match.
+
+        Returns
+        -------
+            int: index of time point closest to the specified time. 
+        """
         return np.argmin(np.abs(self.get_timepoints()-time))
 
     def get_time_values(self, variable, time):
-        """Get values of variable from timepoint closest to time."""
+        """Get time series values for a variable across all conditions
+        at a particular time closest to specified time. 
+        
+        Parameters
+        ----------
+        selection: str
+            Name of variable for which to get time series values.
+        time: int
+            Timepoint in time series from which to get the values.
+
+        Returns
+        -------
+        vector: np.array
+            1D array of time series values of size n, where n is the 
+            number of conditions.
+        """
         i = self.get_selection_index(variable)
         if self.simulations is None:
             warnings.warn("Running simulations.")
@@ -290,14 +339,16 @@ class Experiment(object):
         return vector
 
     def get_values(self, variable, steady_state=True, step=None, time=None):
-        """Get meshgrid of simulation results for a variable. 
-        If steady_state is True, returns steady state value. Otherwise,
-        return variable value at a specific time or step. If time is provided,
-        the nearest time point is returned.
+        """Get  array of simulation results for a variable. 
+        If steady_state is True (default), returns steady state value. 
+        Otherwise, return variable value at a specific time or step. 
+        If time is provided, the nearest time point is returned. 
+        Only one option can be specified.
+
         Parameters
         ----------
         steady_state: boolean
-            If True, returns steady state values. Overrides step and time.
+            If True, returns steady state values.
         step: int
             Index of time point to get values for.
         time: float
@@ -305,14 +356,16 @@ class Experiment(object):
             timepoint is returned. 
         Return
         ------
-        mesh: np.array
-            2D Meshgrid of values. 
+        vector: np.array
+            1D array of values of size n, where n is the number of conditions.
         """
+        if sum([steady_state, (step is not None), (time is not None)]) > 1:
+            raise ValueError("Only one of the three options can be specified.")
         if steady_state:
             return self.get_steady_state(variable)
         elif step is not None:
             return self.get_step_values(variable, step)
         elif time is not None:
-            return self.get_timepoint_values(variable, time)
+            return self.get_time_values(variable, time)
 
         
