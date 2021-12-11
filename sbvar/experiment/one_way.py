@@ -187,7 +187,7 @@ class OneWayExperiment(Experiment):
         return fig, ax, cax
 
     def plot_line(self, selection, steady_state=True, step=None, time=None, 
-        **kwargs):
+        obs=False, **kwargs):
         """
         Plot trend of selection value as a function of the `param`. 
         
@@ -202,6 +202,8 @@ class OneWayExperiment(Experiment):
         time: float
             Timepoint value to get values for. Values for the nearest
             timepoint is returned. 
+        obs: boolean
+            If True, get values from `obs` dataframe.
         kwargs: dict
             Additional keyword arguments for matplotlib plot functions.
 
@@ -215,7 +217,7 @@ class OneWayExperiment(Experiment):
         fig, ax = plt.subplots()
         x = self.conditions
         y = self.get_values(selection, steady_state=steady_state, step=step, 
-            time=time)
+            time=time, obs=obs)
         plt.plot(x, y)
         plt.xlabel(self.param)
         plt.ylabel(selection)

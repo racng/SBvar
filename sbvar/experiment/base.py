@@ -361,7 +361,8 @@ class Experiment(object):
         vector = self.get_step_values(variable, step)
         return vector
 
-    def get_values(self, variable, steady_state=True, step=None, time=None):
+    def get_values(self, variable, steady_state=True, step=None, time=None, 
+        obs=False):
         """Get  array of simulation results for a variable. 
         If steady_state is True (default), returns steady state value. 
         Otherwise, return variable value at a specific time or step. 
@@ -377,18 +378,47 @@ class Experiment(object):
         time: float
             Timepoint value to get values for. Values for the nearest
             timepoint is returned. 
+        obs: True
+            If True, look for column values in `obs` dataframe.
         Return
         ------
         vector: np.array
             1D array of values of size n, where n is the number of conditions.
         """
-        if sum([steady_state, (step is not None), (time is not None)]) > 1:
-            raise ValueError("Only one of the three options can be specified.")
+        if sum([steady_state, (step is not None), (time is not None), obs]) > 1:
+            raise ValueError("Only one option can be specified.")
         if steady_state:
             return self.get_steady_state(variable)
         elif step is not None:
             return self.get_step_values(variable, step)
         elif time is not None:
             return self.get_time_values(variable, time)
+        elif obs:
+            return self.obs[variable].values
 
+
+    def iter_timeseries(self, selection, func, **kwargs):
+        """Iterate through each conditions and get timeseries of selection.
         
+        Parameters
+        ----------
+        selection: str
+            Name of variable for which to get timeseries values.
+        func: callable
+            Function applied to timeseries array.
+        kwargs: dict
+            Additional keyword arguments to for `func`.
+        
+        Returns
+        -------
+        list: list of output from applying function to timeseries of each
+            condition
+        """
+        s = self.get_selection_index(selection)
+        output = []
+        for i, row in self.conditions.iterrows():
+            ts = self.simulations[:, s, i]
+            output.append(func(ts, **kwargs))
+        return output
+
+    

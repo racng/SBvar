@@ -39,20 +39,21 @@ rr = te.loada(ant)
 ```
 
 ## Step 2:
-Create 1D experiment where we vary the initial concentration of S1 from 0 to 10 using 40 evenly spaced samples. We specify simulations to start from $t=0$ and end at $t=4$, using 100 evenly spaced timepoints. 
+Create 1D experiment where we vary the initial concentration of S1 from 0 to 10 using 40 evenly spaced samples. We specify simulations to start from t=0 and end at t=4, using 100 evenly spaced timepoints. 
 
-```
-exp = sb.experiment.OneWayExperiment(rr, param='S1', bounds=(0,12), num=40, start=0, end=4, points=100, conserved_moiety=True)
+```Python
+exp = sb.experiment.OneWayExperiment(rr, param='S1', bounds=(0,12), num=40, 
+    start=0, end=4, points=100, conserved_moiety=True)
 ```
 ## Step 3:
 Simulate timeseries and calculate steady states.
-```
+```Python
 exp.simulate()
 exp.calc_steady_state()
 ```
 ## Step 4:
 Visualize time series of S1 concentration across all conditions as a filled contour plot or 3D surface. 
-```
+```Python
 exp.plot_timecourse_mesh('S1', levels=20)
 exp.plot_timecourse_mesh('S1', kind='surface', projection='3d')
 
