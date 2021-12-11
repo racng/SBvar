@@ -6,7 +6,7 @@ setup(
     version="1.0.0",
     author="Rachel Ng",
     author_email="rachelng323@gmail.com",
-    url="https://github.com/racng/SBvar",
+    url="https://github.com/racng/sbvar",
     description="Varying parameter analysis for SBML models",
     license="MIT", 
     python_requires='>=3.7',
