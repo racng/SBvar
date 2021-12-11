@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sbvar',
-    packages=['sbvar'],
+    packages=['sbvar', 'sbvar/experiment'],
     version="1.0.0",
     author="Rachel Ng",
     author_email="rachelng323@gmail.com",
