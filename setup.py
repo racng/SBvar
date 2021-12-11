@@ -19,10 +19,16 @@ setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
+        'antimony',
         'tellurium',
+        'libroadrunner',
+        'rrplugins',
         'numpy',
         'pandas',
         'matplotlib',
-        'anndata'
+        'anndata',
+        'h5py',
+        'hdf5',
+        'scikit-learn'
     ]
 )
