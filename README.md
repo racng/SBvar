@@ -22,6 +22,7 @@ Sbvar integrates existing packages that specializes in simulations (tellurium an
 5. Flexible downstream analysis on time series based on custom functions.  
 
 # Usage Example
+See [notebook](https://github.com/racng/SBvar/blob/main/notebook/bistable_system.ipynb) for detailed examples for one-way and two-way experiment on a bistable system.
 ## Step 1:
 Loading an antimony model as a roadrunner object using tellurium. 
 ```Python
