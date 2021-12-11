@@ -27,8 +27,7 @@ setup(
         'pandas',
         'matplotlib',
         'anndata',
-        'h5py',
-        'hdf5',
-        'scikit-learn'
+        'scikit-learn',
+        'pytest'
     ]
 )
